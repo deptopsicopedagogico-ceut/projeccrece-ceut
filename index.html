@@ -1,0 +1,2295 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  BookOpen, Video, FileText, Award, Settings, Plus, CheckCircle, Lock, 
+  RotateCcw, Trash2, User, ExternalLink, Check, AlertCircle,
+  Clock, Printer, Sparkles, HelpCircle, Save, Mail, Phone,
+  Layers, ImageIcon, ListOrdered, ChevronRight, RefreshCw, Eye, BookOpenCheck, 
+  ShieldCheck, Users, Search, Sliders, Edit3, ArrowLeft, LogOut, EyeOff,
+  Move, Maximize2, AlignLeft, AlignCenter, AlignRight, Type, Palette,
+  ArrowUp, ArrowDown
+} from 'lucide-react';
+
+import { initializeApp } from 'firebase/app';
+import { 
+  getAuth, 
+  signInAnonymously, 
+  signInWithCustomToken,
+  onAuthStateChanged 
+} from 'firebase/auth';
+import { 
+  getFirestore, 
+  doc, 
+  setDoc, 
+  getDoc, 
+  collection, 
+  onSnapshot, 
+  deleteDoc 
+} from 'firebase/firestore';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDIokXIKltom5YljDQJbIU_SZ6O3Ephj78",
+  authDomain: "microcursos-ceut.firebaseapp.com",
+  projectId: "microcursos-ceut",
+  storageBucket: "microcursos-ceut.firebasestorage.app",
+  messagingSenderId: "849731289939",
+  appId: "1:849731289939:web:73af74685707f8aaca57a6"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'microcursos-ceut-app';
+
+const CEUT_SHIELD = "https://lh3.googleusercontent.com/d/1DjgB_5Qp3_RdLO16akM2WxFj6Rux-3Ic"; 
+const CRECE_LOGO_DRIVE_URL = "https://drive.google.com/file/d/1ao9olFJOvSPvgmeyLJhkD1P0Pmq_R3T2/view?usp=sharing";
+const CERTIFICATE_TEMPLATE_URL = "https://drive.google.com/file/d/1PR6NY9ILYca_9LwI-0mJZzuP_aXQgG1O/view?usp=sharing";
+
+const cleanText = (str) => {
+  if (!str) return '';
+  return str
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") 
+    .toUpperCase();
+};
+
+const cleanEmail = (str) => {
+  if (!str) return '';
+  return str
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, '')
+    .toLowerCase();
+};
+
+const parseDynamicTags = (text, data = {}) => {
+  if (!text) return '';
+  return text
+    .replace(/\{\{NOMBRE\}\}/gi, data.student || "[NOMBRE DEL PARTICIPANTE]")
+    .replace(/\{\{CURSO\}\}/gi, data.courseTitle || "[NOMBRE DEL CURSO]")
+    .replace(/\{\{FOLIO\}\}/gi, data.folio || "[FOLIO DE CONSTANCIA]")
+    .replace(/\{\{FECHA\}\}/gi, data.date || "[FECHA DE EXPEDICION]");
+};
+
+const getDriveImageUrl = (url) => {
+  if (!url) return '';
+  if (url.includes('drive.google.com')) {
+    const idMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
+    if (idMatch && idMatch[1]) {
+      return `https://lh3.googleusercontent.com/d/${idMatch[1]}`;
+    }
+  }
+  return url;
+};
+
+const getEmbedUrl = (url) => {
+  if (!url) return '';
+  if (url.includes('drive.google.com')) {
+    let embeddable = url;
+    if (url.includes('/view')) {
+      embeddable = url.replace('/view', '/preview');
+    }
+    return embeddable.split('?')[0] + (embeddable.includes('?') ? '' : '/preview');
+  }
+  if (url.includes('youtube.com/watch?v=')) {
+    return `https://www.youtube.com/embed/${url.split('v=')[1]?.split('&')[0]}`;
+  }
+  if (url.includes('youtu.be/')) {
+    return `https://www.youtube.com/embed/${url.split('youtu.be/')[1]?.split('?')[0]}`;
+  }
+  return url;
+};
+
+const getYoutubeId = (url) => {
+  if (!url) return null;
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+  const match = url.match(regExp);
+  return (match && match[2].length === 11) ? match[2] : null;
+};
+
+const DEFAULT_COORDS = {
+  name: { left: 10, top: 44, width: 80, height: 8, fontSize: 30, align: 'center', color: '#151c2d' },
+  course: { left: 10, top: 56, width: 80, height: 7, fontSize: 22, align: 'center', color: '#151c2d' },
+  phrase: { left: 12, top: 64, width: 76, height: 12, fontSize: 13, align: 'center', color: '#151c2d' },
+  date: { left: 10, top: 78, width: 80, height: 5, fontSize: 11, align: 'center', color: '#151c2d' },
+  folio: { left: 10, top: 84, width: 35, height: 5, fontSize: 11, align: 'left', color: '#151c2d' },
+  qr: { left: 80, top: 76, width: 10, height: 14, fontSize: 75, align: 'center', color: '#151c2d' }
+};
+
+const DEFAULT_COURSES = [
+  {
+    id: "course-crece-1",
+    code: "01",
+    title: "SOS PRIMEROS AUXILIOS PSICOLOGICOS",
+    description: "CAPACITACION EN LA ADQUISICION DE HERRAMIENTAS PARA LA DETECCION, INTERVENCION INICIAL Y ESTABILIZACION EMOCIONAL DE LOS ALUMNOS EN SITUACIONES DE CRISIS, CONTRIBUYENDO ASI AL FORTALECIMIENTO DE UN ENTORNO ESCOLAR SEGURO.",
+    banner: "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?q=80&w=1200&auto=format&fit=crop",
+    category: "ADMINISTRATIVO & DOCENTE",
+    hours: 20,
+    isActive: true,
+    certificationEnabled: true,
+    customCertPhrase: "Por haber demostrado compromiso y dedicación en la adquisición de herramientas para la detección, intervención inicial y estabilización emocional de los alumnos en situaciones de crisis, contribuyendo así al fortalecimiento de un entorno escolar seguro y al cuidado de la salud mental de la comunidad educativa.",
+    coords: { ...DEFAULT_COORDS },
+    modules: [
+      {
+        id: "m1-c1",
+        title: "UNIDAD I: INTRODUCCION A LOS PRIMEROS AUXILIOS PSICOLOGICOS",
+        contentType: "pdf",
+        contentUrl: "https://drive.google.com/file/d/1DjgB_5Qp3_RdLO16akM2WxFj6Rux-3Ic/view?usp=sharing",
+        contentDuration: 20,
+        questions: [
+          {
+            id: "q1",
+            type: "true-false",
+            text: "LOS PRIMEROS AUXILIOS PSICOLOGICOS DEBEN SER APLICADOS EXCLUSIVAMENTE POR PSIQUIATRAS EN LA PRIMERA HORA DEL EVENTO RECEPTOR",
+            options: ["VERDADERO", "FALSO"],
+            correctAnswer: 1
+          },
+          {
+            id: "q2",
+            type: "multiple-choice",
+            text: "CUAL ES EL OBJETIVO INMEDIATO DEL MODELO DE CONTENCION EMOCIONAL EN EL AMBITO ACADEMICO",
+            options: ["INICIAR TERAPIA PSICANALITICA PROFUNDA", "ESTABILIZAR EMOCIONALMENTE Y REDUCIR EL IMPACTO DEL TRAUMA INICIAL", "REDACTAR UN EXPEDIENTE DE SANCION DISCIPLINARIA", "RECOMENDAR MEDICACION PSIQUIATRICA"],
+            correctAnswer: 1
+          },
+          {
+            id: "q3",
+            type: "ordering",
+            text: "ORDENE CORRECTAMENTE LOS PASOS CRONOLOGICOS DEL PROTOCOLO DE INTERVENCION INICIAL PAP:",
+            options: [
+               "1. CONTACTAR Y PRESENTARSE CON EMPATIA",
+               "2. ESTABILIZAR Y AMORTIGUAR LA CRISIS DE FORMA INMEDIATA",
+               "3. RECOPILAR INFORMACION ESENCIAL DE NECESIDADES",
+               "4. CONECTAR CON SERVICIOS DE APOYO FORMAL"
+            ],
+            correctAnswer: 0
+          }
+        ]
+      }
+    ]
+  }
+];
+
+const QRCodeSVG = ({ value }) => {
+  return (
+    <svg viewBox="0 0 100 100" className="w-full h-full bg-white p-1 rounded border border-slate-900/10">
+      <rect width="100" height="100" fill="#ffffff" />
+      <rect x="5" y="5" width="22" height="22" fill="#0f172a" />
+      <rect x="9" y="9" width="14" height="14" fill="#ffffff" />
+      <rect x="12" y="12" width="8" height="8" fill="#0f172a" />
+      <rect x="73" y="5" width="22" height="22" fill="#0f172a" />
+      <rect x="77" y="9" width="14" height="14" fill="#ffffff" />
+      <rect x="80" y="12" width="8" height="8" fill="#0f172a" />
+      <rect x="5" y="73" width="22" height="22" fill="#0f172a" />
+      <rect x="9" y="77" width="14" height="14" fill="#ffffff" />
+      <rect x="12" y="80" width="8" height="8" fill="#0f172a" />
+      <rect x="42" y="42" width="16" height="16" fill="#0f172a" rx="1" />
+      <circle cx="50" cy="50" r="3.5" fill="#d97706" />
+      <path d="M35 10h10v3H35zm15 3h10v3H50zm0-10h10v3H50zM10 35h3v10h-3zm15 15h3v10h-3zm15 10h10v3H40zm15 5h10v3H55zm15-25h10v3H70zm0 12h3v10h-3zm10 10h3v3h-3zm-12 10h10v3H58z" fill="#0f172a" />
+      <path d="M32 28h10v3H32zm3 12h3v3h-3zm18 5h3v3h-3zm-5 12h3v3h-3zm-12 0h3v3h-3zm22-8h3v3h-3z" fill="#334155" />
+      <path d="M42 5h3v3h-3zm12 20h3v3h-3zm-5 12h3v3h-3zM32 55h3v3h-3z" fill="#d97706" />
+    </svg>
+  );
+};
+
+export default function App() {
+  const [user, setUser] = useState(null);
+  const [courses, setCourses] = useState([]);
+  const [registrations, setRegistrations] = useState([]);
+  const [moduleCompletions, setModuleCompletions] = useState({});
+  const [foliosAssigned, setFoliosAssigned] = useState({});
+
+  const [adminPassword, setAdminPassword] = useState('jcas1015');
+  const [nextUserFolioSequence, setNextUserFolioSequence] = useState(1001);
+  const [nextFolioNumber, setNextFolioNumber] = useState(1);
+
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
+  const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
+  const [targetTabAfterAuth, setTargetTabAfterAuth] = useState('admin');
+  const [passwordInput, setPasswordInput] = useState('');
+  const [newPasswordInput, setNewPasswordInput] = useState('');
+
+  const [activeRegs, setActiveRegs] = useState(() => {
+    const saved = localStorage.getItem('crece_active_regs_fs');
+    return saved ? JSON.parse(saved) : {};
+  });
+
+  const [regName, setRegName] = useState('');
+  const [regRole, setRegRole] = useState('DOCENTE');
+  const [regEmail, setRegEmail] = useState('');
+  const [regPhone, setRegPhone] = useState('');
+  const [resumeFolioInput, setResumeFolioInput] = useState('');
+  const [auditSearchQuery, setAuditSearchQuery] = useState('');
+
+  const [activeTab, setActiveTab] = useState('catalog'); 
+  const [selectedCourse, setSelectedCourse] = useState(null);
+  const [selectedModule, setSelectedModule] = useState(null);
+
+  const [showAccessGateway, setShowAccessGateway] = useState(false);
+  const [targetCourseForGateway, setTargetCourseForGateway] = useState(null);
+
+  const [countdown, setCountdown] = useState(0);
+  const [hasCompletedView, setHasCompletedView] = useState(false);
+  const [activeTimer, setActiveTimer] = useState(false);
+
+  const [quizAnswers, setQuizAnswers] = useState({});
+  const [quizSubmitted, setQuizSubmitted] = useState(false);
+  const [quizPassed, setQuizPassed] = useState(false);
+  const [quizScore, setQuizScore] = useState(0);
+
+  const [newCourseTitle, setNewCourseTitle] = useState('');
+  const [newCourseDesc, setNewCourseDesc] = useState('');
+  const [newCourseHours, setNewCourseHours] = useState(10);
+  const [newCourseCategory, setNewCourseCategory] = useState('PEDAGOGIA APLICADA');
+  const [newCourseBanner, setNewCourseBanner] = useState('https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=1200&auto=format&fit=crop');
+  const [newCourseCertEnabled, setNewCourseCertEnabled] = useState(true);
+  const [newCourseCertPhrase, setNewCourseCertPhrase] = useState('Por haber demostrado compromiso y dedicación en la adquisición de herramientas para la detección, intervención inicial y estabilización emocional de los alumnos en situaciones de crisis, contribuyendo así al fortalecimiento de un entorno escolar seguro y al cuidado de la salud mental de la comunidad educativa.');
+  const [editingCourseId, setEditingCourseId] = useState(null);
+
+  const [designerCoords, setDesignerCoords] = useState(JSON.parse(JSON.stringify(DEFAULT_COORDS)));
+  const [activeBoxId, setActiveBoxId] = useState('name');
+
+  const [adminModules, setAdminModules] = useState([]);
+  const [modTitle, setModTitle] = useState('');
+  const [modType, setModType] = useState('pdf');
+  const [modUrl, setModUrl] = useState('');
+  const [modDuration, setModDuration] = useState(15);
+  
+  const [adminQuestions, setAdminQuestions] = useState([]);
+  const [qText, setQText] = useState('');
+  const [qType, setQType] = useState('multiple-choice');
+  const [qOptions, setQOptions] = useState(['', '', '']);
+  const [qCorrect, setQCorrect] = useState(0);
+
+  const [tempOrderingItems, setTempOrderingItems] = useState([]);
+  const [newOrderingItemInput, setNewOrderingItemInput] = useState('');
+
+  const [certModal, setCertModal] = useState(null);
+  const [toastMessage, setToastMessage] = useState(null);
+
+  const [manualCertName, setManualCertName] = useState("");
+  const [manualCertCourse, setManualCertCourse] = useState("");
+  const [manualCertPhrase, setManualCertPhrase] = useState("");
+  const [manualCertFolio, setManualCertFolio] = useState("");
+  const [manualCertDate, setManualCertDate] = useState("");
+  
+  const [currentPrintCoords, setCurrentPrintCoords] = useState(JSON.parse(JSON.stringify(DEFAULT_COORDS)));
+
+  const designCanvasRef = useRef(null);
+  const printCanvasRef = useRef(null);
+
+  const isDragging = useRef(false);
+  const dragStartPos = useRef({ x: 0, y: 0 });
+  const elementStartCoords = useRef({ left: 0, top: 0, width: 0, height: 0 });
+
+  const ytPlayerRef = useRef(null);
+
+  const currentActiveRegFolio = selectedCourse ? activeRegs[selectedCourse.id] : null;
+  const currentActiveReg = currentActiveRegFolio 
+    ? registrations.find(r => r.folio === currentActiveRegFolio && r.courseId === selectedCourse.id) 
+    : null;
+
+  useEffect(() => {
+    if (!window.YT) {
+      const tag = document.createElement('script');
+      tag.src = "https://www.youtube.com/iframe_api";
+      const firstScriptTag = document.getElementsByTagName('script')[0];
+      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+    }
+  }, []);
+
+  useEffect(() => {
+    const initAuth = async () => {
+      try {
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+          await signInAnonymously(auth);
+        }
+      } catch (err) {
+        console.warn("Retrying custom token sign-in, falling back anonymously:", err);
+        try {
+          await signInAnonymously(auth);
+        } catch (anonErr) {
+          console.error("Critical Firebase authentication failure:", anonErr);
+        }
+      }
+    };
+    initAuth();
+    const unsubscribe = onAuthStateChanged(auth, setUser);
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const coursesRef = collection(db, 'artifacts', appId, 'public', 'data', 'courses');
+    const unsubCourses = onSnapshot(coursesRef, (snapshot) => {
+      const list = [];
+      snapshot.forEach(doc => list.push({ id: doc.id, ...doc.data() }));
+      
+      if (list.length === 0) {
+        DEFAULT_COURSES.forEach(async (c) => {
+          await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'courses', c.id), c);
+        });
+      } else {
+        setCourses(list);
+      }
+    }, (err) => console.error("Error reading courses:", err));
+
+    const regsRef = collection(db, 'artifacts', appId, 'public', 'data', 'registrations');
+    const unsubRegs = onSnapshot(regsRef, (snapshot) => {
+      const list = [];
+      snapshot.forEach(doc => list.push({ id: doc.id, ...doc.data() }));
+      setRegistrations(list);
+    }, (err) => console.error("Error reading registrations:", err));
+
+    const completionsRef = collection(db, 'artifacts', appId, 'public', 'data', 'completions');
+    const unsubCompletions = onSnapshot(completionsRef, (snapshot) => {
+      const map = {};
+      snapshot.forEach(doc => {
+        map[doc.id] = doc.data();
+      });
+      setModuleCompletions(map);
+    }, (err) => console.error("Error reading completions:", err));
+
+    const certsRef = collection(db, 'artifacts', appId, 'public', 'data', 'certificates');
+    const unsubCerts = onSnapshot(certsRef, (snapshot) => {
+      const map = {};
+      snapshot.forEach(doc => {
+        map[doc.id] = doc.data();
+      });
+      setFoliosAssigned(map);
+    }, (err) => console.error("Error reading certificates:", err));
+
+    const configDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config');
+    const unsubConfig = onSnapshot(configDocRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        if (data.adminPassword) setAdminPassword(data.adminPassword);
+        if (data.nextUserFolioSequence) setNextUserFolioSequence(data.nextUserFolioSequence);
+        if (data.nextFolioNumber) setNextFolioNumber(data.nextFolioNumber);
+      } else {
+        setDoc(configDocRef, {
+          adminPassword: 'jcas1015',
+          nextUserFolioSequence: 1001,
+          nextFolioNumber: 1
+        });
+      }
+    }, (err) => console.error("Error reading configuration settings:", err));
+
+    return () => {
+      unsubCourses();
+      unsubRegs();
+      unsubCompletions();
+      unsubCerts();
+      unsubConfig();
+    };
+  }, [user]);
+
+  useEffect(() => {
+    if (!selectedModule || !currentActiveRegFolio) return;
+    
+    const key = `${currentActiveRegFolio}-${selectedModule.id}`;
+    const alreadyDone = moduleCompletions[key]?.examPassed || false;
+
+    if (alreadyDone) {
+      setCountdown(0);
+      setHasCompletedView(true);
+      setActiveTimer(false);
+    } else {
+      if (selectedModule.contentType === 'video') {
+        setCountdown(999); 
+        setHasCompletedView(false);
+        setActiveTimer(false); 
+      } else {
+        setCountdown(selectedModule.contentDuration || 15);
+        setHasCompletedView(false);
+        setActiveTimer(true);
+      }
+    }
+
+    const initialAnswers = {};
+    (selectedModule.questions || []).forEach(q => {
+      if (q.type === 'ordering') {
+        const shuffled = [...q.options].sort(() => Math.random() - 0.5);
+        initialAnswers[q.id] = shuffled;
+      }
+    });
+
+    setQuizAnswers(initialAnswers);
+    setQuizSubmitted(false);
+    setQuizPassed(false);
+    setQuizScore(0);
+  }, [selectedModule, selectedCourse, currentActiveRegFolio, moduleCompletions]);
+
+  useEffect(() => {
+    if (!selectedModule || selectedModule.contentType !== 'video' || !currentActiveRegFolio) {
+      if (ytPlayerRef.current) {
+        try { ytPlayerRef.current.destroy(); } catch(e){}
+        ytPlayerRef.current = null;
+      }
+      return;
+    }
+
+    const key = `${currentActiveRegFolio}-${selectedModule.id}`;
+    const alreadyDone = moduleCompletions[key]?.examPassed || false;
+    if (alreadyDone) return;
+
+    const ytId = getYoutubeId(selectedModule.contentUrl);
+    if (!ytId) return;
+
+    let playerInitInterval = null;
+
+    const initPlayer = () => {
+      if (window.YT && window.YT.Player) {
+        if (ytPlayerRef.current) {
+          try { ytPlayerRef.current.destroy(); } catch(e){}
+        }
+        
+        ytPlayerRef.current = new window.YT.Player('yt-player-container', {
+          videoId: ytId,
+          playerVars: {
+            autoplay: 0,
+            modestbranding: 1,
+            rel: 0,
+            controls: 1
+          },
+          events: {
+            onReady: (event) => {
+              const duration = Math.round(event.target.getDuration());
+              if (duration > 0) {
+                setCountdown(duration);
+                setActiveTimer(true);
+              }
+            },
+            onStateChange: (event) => {
+              if (event.data === window.YT.PlayerState.ENDED) {
+                setHasCompletedView(true);
+                setCountdown(0);
+                setActiveTimer(false);
+                triggerToast("📖 VIDEO COMPLETADO: EVALUACION DESBLOQUEADA");
+              }
+            }
+          }
+        });
+        clearInterval(playerInitInterval);
+      }
+    };
+
+    playerInitInterval = setInterval(() => {
+      initPlayer();
+    }, 500);
+
+    return () => {
+      clearInterval(playerInitInterval);
+      if (ytPlayerRef.current) {
+        try { ytPlayerRef.current.destroy(); } catch(e){}
+        ytPlayerRef.current = null;
+      }
+    };
+  }, [selectedModule, currentActiveRegFolio, moduleCompletions]);
+
+  useEffect(() => {
+    let interval = null;
+    if (activeTimer && countdown > 0 && selectedModule?.contentType !== 'video') {
+      interval = setInterval(() => {
+        setCountdown((prev) => prev - 1);
+      }, 1000);
+    } else if (countdown === 0 && activeTimer && selectedModule?.contentType !== 'video') {
+      setHasCompletedView(true);
+      setActiveTimer(false);
+      triggerToast("📖 ESTUDIO COMPLETADO: EVALUACION DESBLOQUEADA");
+    }
+    return () => clearInterval(interval);
+  }, [activeTimer, countdown, selectedModule]);
+
+  const triggerToast = (text) => {
+    setToastMessage(cleanText(text));
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 4000);
+  };
+
+  const promptAdminPassword = (targetTab) => {
+    setTargetTabAfterAuth(targetTab);
+    if (isAdminAuthenticated) {
+      setActiveTab(targetTab);
+    } else {
+      setShowPasswordPrompt(true);
+      setPasswordInput('');
+    }
+  };
+
+  const handleVerifyPassword = (e) => {
+    e.preventDefault();
+    if (passwordInput === adminPassword) {
+      setIsAdminAuthenticated(true);
+      setShowPasswordPrompt(false);
+      setActiveTab(targetTabAfterAuth);
+      setPasswordInput('');
+      triggerToast("🔓 ACCESO DE ADMINISTRADOR AUTORIZADO");
+    } else {
+      triggerToast("❌ CONTRASEÑA INCORRECTA");
+    }
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    if (!newPasswordInput.trim()) {
+      triggerToast("⚠️ LA NUEVA CONTRASEÑA NO PUEDE ESTAR VACIA");
+      return;
+    }
+    const updatedPass = newPasswordInput.trim();
+    setAdminPassword(updatedPass);
+    
+    const configDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config');
+    await setDoc(configDocRef, { adminPassword: updatedPass }, { merge: true });
+
+    setNewPasswordInput('');
+    triggerToast("🔑 CONTRASEÑA ACTUALIZADA CON EXITO");
+  };
+
+  const handleLockAdmin = () => {
+    setIsAdminAuthenticated(false);
+    setActiveTab('catalog');
+    triggerToast("🔒 SESION ADMINISTRATIVA CERRADA");
+  };
+
+  const handleCourseCardClick = (course) => {
+    setTargetCourseForGateway(course);
+    const activeFolio = activeRegs[course.id];
+    
+    if (!activeFolio) {
+      setShowAccessGateway(true);
+    } else {
+      const reg = registrations.find(r => r.folio === activeFolio && r.courseId === course.id);
+      if (reg) {
+        setSelectedCourse(course);
+        setSelectedModule(course.modules[0]);
+        setActiveTab('workspace');
+      } else {
+        setShowAccessGateway(true);
+      }
+    }
+  };
+
+  const handleRegisterForCourse = async (e) => {
+    e.preventDefault();
+    if (!regName || !regEmail.trim() || !regPhone) {
+      triggerToast("⚠️ POR FAVOR COMPLETA TODOS LOS CAMPOS");
+      return;
+    }
+
+    const uppercaseName = cleanText(regName);
+    const lowercaseEmail = cleanEmail(regEmail);
+    const uppercasePhone = cleanText(regPhone);
+    const uppercaseRole = cleanText(regRole);
+
+    const assignedFolio = `CEUT-${nextUserFolioSequence}`;
+    const newRegId = `reg-${Date.now()}`;
+
+    const newReg = {
+      id: newRegId,
+      courseId: targetCourseForGateway.id,
+      courseTitle: targetCourseForGateway.title,
+      folio: assignedFolio,
+      name: uppercaseName,
+      role: uppercaseRole,
+      email: lowercaseEmail,
+      phone: uppercasePhone,
+      registeredAt: new Date().toLocaleDateString('es-MX')
+    };
+
+    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'registrations', newRegId), newReg);
+    
+    const nextSeq = nextUserFolioSequence + 1;
+    setNextUserFolioSequence(nextSeq);
+    const configDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config');
+    await setDoc(configDocRef, { nextUserFolioSequence: nextSeq }, { merge: true });
+
+    const updatedActiveRegs = {
+      ...activeRegs,
+      [targetCourseForGateway.id]: assignedFolio
+    };
+    setActiveRegs(updatedActiveRegs);
+    localStorage.setItem('crece_active_regs_fs', JSON.stringify(updatedActiveRegs));
+
+    setRegName('');
+    setRegEmail('');
+    setRegPhone('');
+    
+    setShowAccessGateway(false);
+    setSelectedCourse(targetCourseForGateway);
+    setSelectedModule(targetCourseForGateway.modules[0]);
+    setActiveTab('workspace');
+    triggerToast(`👤 INSCRIPCION COMPLETA. FOLIO MEMORABLE: ${assignedFolio}`);
+  };
+
+  const handleResumeWithFolio = (e) => {
+    e.preventDefault();
+    const cleanInput = cleanText(resumeFolioInput);
+    const cleanInputEmail = cleanEmail(resumeFolioInput);
+    
+    const matchedReg = registrations.find(
+      r => (cleanText(r.folio) === cleanInput || 
+            cleanEmail(r.email) === cleanInputEmail || 
+            cleanText(r.phone) === cleanInput) && 
+           r.courseId === targetCourseForGateway.id
+    );
+
+    if (matchedReg) {
+      const updatedActiveRegs = {
+        ...activeRegs,
+        [targetCourseForGateway.id]: matchedReg.folio
+      };
+      setActiveRegs(updatedActiveRegs);
+      localStorage.setItem('crece_active_regs_fs', JSON.stringify(updatedActiveRegs));
+      setResumeFolioInput('');
+      setShowAccessGateway(false);
+      setSelectedCourse(targetCourseForGateway);
+      setSelectedModule(targetCourseForGateway.modules[0]);
+      setActiveTab('workspace');
+      triggerToast(`🔓 SESION RESTAURADA: BIENVENIDO ${matchedReg.name}`);
+    } else {
+      triggerToast("❌ CREDENCIAL NO REGISTRADA PARA ESTE CURSO");
+    }
+  };
+
+  const handleLogoutCourse = (courseId) => {
+    const updated = { ...activeRegs };
+    delete updated[courseId];
+    setActiveRegs(updated);
+    localStorage.setItem('crece_active_regs_fs', JSON.stringify(updated));
+    setSelectedCourse(null);
+    setSelectedModule(null);
+    setActiveTab('catalog');
+    triggerToast("🔒 SESION CERRADA PARA ESTE CURSO");
+  };
+
+  const handleSelectAnswer = (qId, answerValue) => {
+    if (quizSubmitted) return;
+    setQuizAnswers(prev => ({
+      ...prev,
+      [qId]: answerValue
+    }));
+  };
+
+  const handleMoveOrder = (qId, idx, direction) => {
+    if (quizSubmitted) return;
+    const currentList = [...(quizAnswers[qId] || [])];
+    if (direction === 'up' && idx > 0) {
+      const temp = currentList[idx];
+      currentList[idx] = currentList[idx - 1];
+      currentList[idx - 1] = temp;
+    } else if (direction === 'down' && idx < currentList.length - 1) {
+      const temp = currentList[idx];
+      currentList[idx] = currentList[idx + 1];
+      currentList[idx + 1] = temp;
+    }
+    setQuizAnswers(prev => ({
+      ...prev,
+      [qId]: currentList
+    }));
+  };
+
+  const handleEvaluateModule = async () => {
+    const questions = selectedModule.questions || [];
+    if (questions.length === 0) return;
+
+    let correctCount = 0;
+    questions.forEach(q => {
+      const userAns = quizAnswers[q.id];
+      if (q.type === 'ordering') {
+        const correctSequence = q.options || [];
+        const userSequence = userAns || [];
+        const matches = correctSequence.length === userSequence.length &&
+                        correctSequence.every((val, index) => val === userSequence[index]);
+        if (matches) {
+          correctCount++;
+        }
+      } else {
+        if (Number(userAns) === Number(q.correctAnswer)) {
+          correctCount++;
+        }
+      }
+    });
+
+    const finalPct = Math.round((correctCount / questions.length) * 100);
+    const passed = finalPct >= 80;
+
+    setQuizScore(finalPct);
+    setQuizPassed(passed);
+    setQuizSubmitted(true);
+
+    if (passed) {
+      const key = `${currentActiveRegFolio}-${selectedModule.id}`;
+      const completionDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'completions', key);
+      
+      const rawDate = new Date().toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' });
+      const uppercaseDate = rawDate.toUpperCase();
+
+      await setDoc(completionDocRef, { 
+        examPassed: true, 
+        score: finalPct, 
+        regFolio: currentActiveRegFolio, 
+        moduleId: selectedModule.id,
+        completedAt: uppercaseDate
+      });
+
+      triggerToast("🎉 UNIDAD ACREDITADA CON EXITO");
+      
+      setTimeout(() => {
+        const updatedCompletions = {
+          ...moduleCompletions,
+          [key]: { examPassed: true, score: finalPct, completedAt: uppercaseDate }
+        };
+        checkAndAssignFolio(selectedCourse, updatedCompletions, currentActiveRegFolio, uppercaseDate);
+      }, 800);
+    } else {
+      triggerToast("⚠️ RESPUESTAS CORRECTAS INSUFICIENTES. REPASAR Y REINTENTAR.");
+    }
+  };
+
+  const checkAndAssignFolio = async (course, currentCompletions, regFolio, completionDate) => {
+    if (course.certificationEnabled === false) {
+      triggerToast("🎓 CURSO COMPLETADO (SIN CONSTANCIA HABILITADA)");
+      return;
+    }
+
+    const userRole = cleanText(currentActiveReg?.role);
+    if (userRole !== 'DOCENTE' && userRole !== 'ADMINISTRATIVO') {
+      triggerToast("⚠️ EMISION RESTRINGIDA: SOLO DOCENTES O ADMINISTRATIVOS");
+      return;
+    }
+
+    const allPassed = course.modules.every(m => {
+      const key = `${regFolio}-${m.id}`;
+      return currentCompletions[key]?.examPassed;
+    });
+
+    const completionKey = `${regFolio}-${course.id}`;
+
+    if (allPassed && !foliosAssigned[completionKey]) {
+      const formattedCourseCode = course.code || "01";
+      const rolePrefix = userRole === 'DOCENTE' ? 'CEUT-DOC' : 'CEUT-ADM';
+      const generatedFolio = `${rolePrefix}${formattedCourseCode}${String(nextFolioNumber).padStart(3, '0')}`;
+      
+      const formattedExpirationDate = `TEHUACAN, PUEBLA A: ${completionDate}`;
+
+      const certObj = {
+        folio: generatedFolio,
+        registrationFolio: regFolio,
+        date: formattedExpirationDate,
+        courseId: course.id,
+        courseTitle: course.title,
+        student: currentActiveReg.name,
+        role: currentActiveReg.role,
+        personalFolio: currentActiveReg.folio,
+        email: currentActiveReg.email,
+        phone: currentActiveReg.phone,
+        hours: course.hours,
+        customPhrase: course.customCertPhrase || "Por haber demostrado compromiso y dedicación en la adquisición de herramientas para la detección, intervención inicial y estabilización emocional de los alumnos en situaciones de crisis..."
+      };
+
+      await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'certificates', completionKey), certObj);
+
+      const nextNum = nextFolioNumber + 1;
+      setNextFolioNumber(nextNum);
+      const configDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config');
+      await setDoc(configDocRef, { nextFolioNumber: nextNum }, { merge: true });
+
+      triggerToast(`🎓 CONSTANCIA EMITIDA AUTOMATICAMENTE: ${generatedFolio}`);
+    }
+  };
+
+  const getEnrollmentProgress = (course, folio) => {
+    if (!course.modules || course.modules.length === 0) return 0;
+    const passed = course.modules.filter(m => {
+      const key = `${folio}-${m.id}`;
+      return moduleCompletions[key]?.examPassed;
+    }).length;
+    return Math.round((passed / course.modules.length) * 100);
+  };
+
+  const handleOpenCertificate = (record) => {
+    const courseObj = courses.find(c => c.id === record.courseId || c.title === record.courseTitle);
+    const coords = courseObj?.coords || JSON.parse(JSON.stringify(DEFAULT_COORDS));
+    
+    setCertModal(record);
+    setManualCertName(cleanText(record.student));
+    setManualCertCourse(cleanText(record.courseTitle));
+    setManualCertPhrase(record.customPhrase); 
+    setManualCertFolio(cleanText(record.folio));
+    setManualCertDate(cleanText(record.date));
+    setCurrentPrintCoords(JSON.parse(JSON.stringify(coords)));
+  };
+
+  const addOrderingItemToTemp = () => {
+    if (!newOrderingItemInput.trim()) return;
+    setTempOrderingItems([...tempOrderingItems, cleanText(newOrderingItemInput.trim())]);
+    setNewOrderingItemInput('');
+  };
+
+  const addQuestionToForm = () => {
+    if (!qText.trim()) return;
+
+    let parsedOptions = [];
+    if (qType === 'true-false') {
+      parsedOptions = ["VERDADERO", "FALSO"];
+    } else if (qType === 'ordering') {
+      if (tempOrderingItems.length < 2) {
+        triggerToast("⚠️ AGREGA AL MENOS DOS PASOS PARA ORDENAR");
+        return;
+      }
+      parsedOptions = [...tempOrderingItems];
+    } else {
+      parsedOptions = qOptions.filter(o => o.trim() !== '').map(o => cleanText(o));
+    }
+    
+    const newQ = {
+      id: `q-gen-${Date.now()}`,
+      type: qType,
+      text: cleanText(qText.trim()),
+      options: parsedOptions,
+      correctAnswer: qType === 'ordering' ? 0 : Number(qCorrect)
+    };
+
+    setAdminQuestions([...adminQuestions, newQ]);
+    setQText('');
+    setQOptions(['', '', '']);
+    setTempOrderingItems([]);
+    setQCorrect(0);
+    triggerToast("❓ PREGUNTA AGREGADA AL MODULO");
+  };
+
+  const addModuleToCourse = () => {
+    if (!modTitle.trim() || !modUrl.trim()) {
+      triggerToast("⚠️ EL TITULO Y LA URL DEL RECURSO SON OBLIGATORIOS");
+      return;
+    }
+
+    const newMod = {
+      id: `m-gen-${Date.now()}`,
+      title: cleanText(modTitle.trim()),
+      contentType: modType,
+      contentUrl: modUrl.trim(),
+      contentDuration: Number(modDuration) || 15,
+      questions: adminQuestions
+    };
+
+    setAdminModules([...adminModules, newMod]);
+    setModTitle('');
+    setModUrl('');
+    setAdminQuestions([]);
+    triggerToast("📚 UNIDAD EDUCATIVA AÑADIDA");
+  };
+
+  const handleSaveNewCourse = async () => {
+    if (!newCourseTitle.trim()) {
+      triggerToast("⚠️ EL TITULO DEL CURSO ES OBLIGATORIO");
+      return;
+    }
+
+    if (adminModules.length === 0) {
+      triggerToast("⚠️ DEBES AGREGAR AL MENOS UN MODULO EDUCATIVO");
+      return;
+    }
+
+    const courseId = editingCourseId || `course-${Date.now()}`;
+    const courseCode = String(courses.length + 1).padStart(2, '0');
+
+    const courseData = {
+      id: courseId,
+      code: courseCode,
+      title: cleanText(newCourseTitle),
+      description: cleanText(newCourseDesc),
+      hours: Number(newCourseHours) || 10,
+      category: cleanText(newCourseCategory),
+      banner: newCourseBanner.trim(),
+      isActive: true,
+      certificationEnabled: newCourseCertEnabled,
+      customCertPhrase: newCourseCertPhrase.trim(),
+      coords: designerCoords,
+      modules: adminModules
+    };
+
+    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'courses', courseId), courseData);
+
+    setNewCourseTitle('');
+    setNewCourseDesc('');
+    setAdminModules([]);
+    setEditingCourseId(null);
+    triggerToast("💾 CURSO PUBLICADO EXITOSAMENTE");
+  };
+
+  const handleEditCourseInAdmin = (course) => {
+    setEditingCourseId(course.id);
+    setNewCourseTitle(course.title);
+    setNewCourseDesc(course.description);
+    setNewCourseHours(course.hours);
+    setNewCourseCategory(course.category);
+    setNewCourseBanner(course.banner);
+    setNewCourseCertEnabled(course.certificationEnabled !== false);
+    setNewCourseCertPhrase(course.customCertPhrase || '');
+    setAdminModules(course.modules || []);
+    if (course.coords) setDesignerCoords(course.coords);
+    triggerToast(`✏️ EDITANDO: ${course.title}`);
+  };
+
+  const handleDeleteCourse = async (courseId) => {
+    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'courses', courseId));
+    triggerToast("🗑️ CURSO ELIMINADO");
+  };
+
+  const handleDeleteRegistration = async (regId) => {
+    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'registrations', regId));
+    triggerToast("🗑️ REGISTRO DE ALUMNO ELIMINADO");
+  };
+
+  const handleCoordChange = (key, prop, value) => {
+    setDesignerCoords(prev => ({
+      ...prev,
+      [key]: {
+        ...prev[key],
+        [prop]: value
+      }
+    }));
+  };
+
+  const handleMouseDownOnBox = (e, boxId) => {
+    e.stopPropagation();
+    setActiveBoxId(boxId);
+    isDragging.current = true;
+    dragStartPos.current = { x: e.clientX, y: e.clientY };
+    elementStartCoords.current = { ...designerCoords[boxId] };
+
+    const handleMouseMove = (moveEvent) => {
+      if (!isDragging.current || !designCanvasRef.current) return;
+      const rect = designCanvasRef.current.getBoundingClientRect();
+      const deltaXPct = ((moveEvent.clientX - dragStartPos.current.x) / rect.width) * 100;
+      const deltaYPct = ((moveEvent.clientY - dragStartPos.current.y) / rect.height) * 100;
+
+      const newLeft = Math.max(0, Math.min(90, Math.round(elementStartCoords.current.left + deltaXPct)));
+      const newTop = Math.max(0, Math.min(90, Math.round(elementStartCoords.current.top + deltaYPct)));
+
+      setDesignerCoords(prev => ({
+        ...prev,
+        [boxId]: {
+          ...prev[boxId],
+          left: newLeft,
+          top: newTop
+        }
+      }));
+    };
+
+    const handleMouseUp = () => {
+      isDragging.current = false;
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+  };
+
+  const handleSaveDesignerCoordsToCourse = async () => {
+    if (!editingCourseId) {
+      triggerToast("⚠️ SELECCIONA O CREA UN CURSO PARA APLICAR EL DISEÑO");
+      return;
+    }
+    const courseRef = doc(db, 'artifacts', appId, 'public', 'data', 'courses', editingCourseId);
+    await setDoc(courseRef, { coords: designerCoords }, { merge: true });
+    triggerToast("📐 COORDENADAS GUARDADAS EN EL CURSO");
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col font-sans selection:bg-amber-500 selection:text-slate-900 print:bg-white print:text-black">
+      
+      {/* Toast Notification Header */}
+      {toastMessage && (
+        <div className="fixed top-5 right-5 z-50 bg-amber-500 text-slate-950 px-5 py-3 rounded-xl shadow-2xl font-bold border border-amber-300 flex items-center gap-3 animate-bounce">
+          <Sparkles className="w-5 h-5 shrink-0" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
+      {/* Main Top Header Navbar */}
+      <header className="bg-slate-950 border-b border-slate-800 px-6 py-4 flex flex-wrap items-center justify-between gap-4 sticky top-0 z-40 print:hidden shadow-md">
+        <div className="flex items-center gap-4">
+          <img src={CEUT_SHIELD} alt="CEUT Logo" className="h-12 w-auto object-contain filter drop-shadow" />
+          <div>
+            <h1 className="text-xl font-black tracking-wider text-amber-400 flex items-center gap-2">
+              CEUT <span className="text-slate-400 font-normal">| CAPACITACION CONTINUA</span>
+            </h1>
+            <p className="text-xs text-slate-400 font-medium">PROGRAMA DE MICROCURSOS Y CERTIFICACION DOCENTE</p>
+          </div>
+        </div>
+
+        <nav className="flex items-center gap-2 bg-slate-900/90 p-1.5 rounded-xl border border-slate-800/80">
+          <button
+            onClick={() => setActiveTab('catalog')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+              activeTab === 'catalog'
+                ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+            }`}
+          >
+            <BookOpen className="w-4 h-4" />
+            OFERTA ACADEMICA
+          </button>
+
+          {selectedCourse && currentActiveRegFolio && (
+            <button
+              onClick={() => setActiveTab('workspace')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+                activeTab === 'workspace'
+                  ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+              }`}
+            >
+              <BookOpenCheck className="w-4 h-4" />
+              AULA VIRTUAL
+            </button>
+          )}
+
+          <button
+            onClick={() => promptAdminPassword('audit')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+              activeTab === 'audit'
+                ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            EXPEDIENTES Y AUDITORIA
+          </button>
+
+          <button
+            onClick={() => promptAdminPassword('admin')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+              activeTab === 'admin'
+                ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+            }`}
+          >
+            <Settings className="w-4 h-4" />
+            ADMINISTRACION
+          </button>
+
+          {isAdminAuthenticated && (
+            <button
+              onClick={handleLockAdmin}
+              className="p-2 text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors ml-2"
+              title="Cerrar sesión de administrador"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          )}
+        </nav>
+      </header>
+
+      {}
+      {showPasswordPrompt && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-6">
+            <div className="flex items-center gap-3 text-amber-400 border-b border-slate-800 pb-4">
+              <ShieldCheck className="w-7 h-7" />
+              <div>
+                <h3 className="font-bold text-lg text-slate-100">ACCESO ADMINISTRATIVO REGULADO</h3>
+                <p className="text-xs text-slate-400">CENTRO DE ESTUDIOS UNIVERSITARIOS TEHUACAN</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleVerifyPassword} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">CONTRASEÑA DE CONTROL</label>
+                <div className="relative">
+                  <Lock className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                  <input
+                    type="password"
+                    value={passwordInput}
+                    onChange={(e) => setPasswordInput(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl py-2.5 pl-10 pr-4 text-sm text-slate-100 focus:outline-none focus:border-amber-500"
+                    autoFocus
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowPasswordPrompt(false)}
+                  className="px-4 py-2 text-xs font-bold text-slate-400 hover:text-slate-200"
+                >
+                  CANCELAR
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs transition-colors shadow-md shadow-amber-500/20"
+                >
+                  AUTENTICAR
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Main Body Routing Area */}
+      <main className="flex-1 p-6 max-w-7xl w-full mx-auto print:p-0 print:m-0">
+        
+        {}
+        {activeTab === 'catalog' && (
+          <div className="space-y-8">
+            <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 border border-slate-800 rounded-3xl p-8 relative overflow-hidden shadow-2xl">
+              <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
+              <div className="relative z-10 max-w-2xl space-y-4">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                  <Sparkles className="w-3.5 h-3.5" /> PLATAFORMA DE CAPACITACION CONTINUA CRECE
+                </span>
+                <h2 className="text-3xl font-black text-slate-100 tracking-tight">
+                  MICROCURSOS INSTITUCIONALES PARA DOCENTES Y ADMINISTRATIVOS
+                </h2>
+                <p className="text-sm text-slate-400 leading-relaxed">
+                  Accede a nuestros módulos de autoaprendizaje, evalúa tu dominio de competencias y obtén de forma automatizada tu constancia oficial expedida por el Centro de Estudios Universitarios Tehuacán.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {courses.map(course => {
+                const activeFolio = activeRegs[course.id];
+                const progressPct = activeFolio ? getEnrollmentProgress(course, activeFolio) : 0;
+                const isCompleted = progressPct === 100;
+                const certData = activeFolio ? foliosAssigned[`${activeFolio}-${course.id}`] : null;
+
+                return (
+                  <div 
+                    key={course.id}
+                    className="bg-slate-950 border border-slate-800 hover:border-amber-500/50 rounded-2xl overflow-hidden flex flex-col transition-all duration-300 shadow-xl group"
+                  >
+                    <div className="relative h-48 overflow-hidden bg-slate-900">
+                      <img 
+                        src={course.banner} 
+                        alt={course.title} 
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=1200"; }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent"></div>
+                      <span className="absolute top-3 left-3 bg-slate-900/90 backdrop-blur-md text-amber-400 border border-amber-500/30 text-[10px] font-black px-2.5 py-1 rounded-md uppercase tracking-wider">
+                        {course.category}
+                      </span>
+                      <span className="absolute top-3 right-3 bg-slate-900/90 backdrop-blur-md text-slate-300 border border-slate-700 text-[10px] font-bold px-2.5 py-1 rounded-md flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-amber-400" /> {course.hours} HRS
+                      </span>
+                    </div>
+
+                    <div className="p-6 flex-1 flex flex-col justify-between space-y-4">
+                      <div className="space-y-2">
+                        <h3 className="font-bold text-slate-100 text-lg leading-snug group-hover:text-amber-400 transition-colors">
+                          {course.title}
+                        </h3>
+                        <p className="text-xs text-slate-400 line-clamp-3 leading-relaxed">
+                          {course.description}
+                        </p>
+                      </div>
+
+                      <div className="space-y-3 pt-2 border-t border-slate-900">
+                        {activeFolio ? (
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between text-xs font-semibold">
+                              <span className="text-slate-400">AVANCE DEL CURSO</span>
+                              <span className={isCompleted ? "text-emerald-400 font-bold" : "text-amber-400"}>
+                                {progressPct}%
+                              </span>
+                            </div>
+                            <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+                              <div 
+                                className={`h-full transition-all duration-500 ${isCompleted ? 'bg-emerald-500' : 'bg-amber-500'}`}
+                                style={{ width: `${progressPct}%` }}
+                              ></div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 text-xs text-slate-500">
+                            <BookOpen className="w-4 h-4 text-slate-600" />
+                            <span>{course.modules?.length || 0} UNIDADES EDUCATIVAS</span>
+                          </div>
+                        )}
+
+                        <div className="flex items-center gap-2 pt-2">
+                          <button
+                            onClick={() => handleCourseCardClick(course)}
+                            className="flex-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all shadow-md shadow-amber-500/10"
+                          >
+                            {activeFolio ? (isCompleted ? 'REVISAR CURSO' : 'CONTINUAR ESTUDIO') : 'INGRESAR AL CURSO'}
+                            <ChevronRight className="w-4 h-4" />
+                          </button>
+
+                          {activeFolio && (
+                            <button
+                              onClick={() => handleLogoutCourse(course.id)}
+                              className="p-2.5 bg-slate-900 hover:bg-rose-500/10 text-slate-400 hover:text-rose-400 border border-slate-800 rounded-xl transition-colors"
+                              title="Salir del curso"
+                            >
+                              <LogOut className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+
+                        {certData && (
+                          <button
+                            onClick={() => handleOpenCertificate(certData)}
+                            className="w-full bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold py-2 px-3 rounded-xl text-xs flex items-center justify-center gap-2 transition-all"
+                          >
+                            <Award className="w-4 h-4" /> VER CONSTANCIA DE EMISION
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {}
+        {showAccessGateway && targetCourseForGateway && (
+          <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-xl w-full p-8 shadow-2xl space-y-6">
+              <div className="flex items-start justify-between gap-4 border-b border-slate-800 pb-4">
+                <div>
+                  <span className="text-[10px] font-bold text-amber-400 tracking-wider uppercase bg-amber-500/10 px-2.5 py-1 rounded border border-amber-500/20">
+                    PORTAL DE REGISTRO DE PARTICIPANTE
+                  </span>
+                  <h3 className="text-xl font-black text-slate-100 mt-2">
+                    {targetCourseForGateway.title}
+                  </h3>
+                </div>
+                <button 
+                  onClick={() => setShowAccessGateway(false)}
+                  className="text-slate-500 hover:text-slate-300 p-1"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                {/* Form 1: New Enrollment */}
+                <form onSubmit={handleRegisterForCourse} className="space-y-4 bg-slate-950/50 p-4 rounded-2xl border border-slate-800">
+                  <h4 className="text-xs font-bold text-amber-400 uppercase flex items-center gap-1.5">
+                    <User className="w-4 h-4" /> NUEVA INSCRIPCION
+                  </h4>
+                  <p className="text-[11px] text-slate-400">Si es tu primera vez en este microcurso, completa tus datos:</p>
+                  
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 mb-1">NOMBRE COMPLETO</label>
+                      <input
+                        type="text"
+                        value={regName}
+                        onChange={(e) => setRegName(e.target.value)}
+                        placeholder="EJ. JUAN CARLOS ARAGON SANCHEZ"
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg py-1.5 px-3 text-xs text-slate-100 uppercase focus:outline-none focus:border-amber-500"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 mb-1">ROL INSTITUCIONAL</label>
+                      <select
+                        value={regRole}
+                        onChange={(e) => setRegRole(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg py-1.5 px-3 text-xs text-slate-100 focus:outline-none focus:border-amber-500"
+                      >
+                        <option value="DOCENTE">DOCENTE</option>
+                        <option value="ADMINISTRATIVO">ADMINISTRATIVO</option>
+                        <option value="ESTUDIANTE">ESTUDIANTE</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 mb-1">CORREO ELECTRONICO</label>
+                      <input
+                        type="email"
+                        value={regEmail}
+                        onChange={(e) => setRegEmail(e.target.value)}
+                        placeholder="correo@ejemplo.com"
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg py-1.5 px-3 text-xs text-slate-100 focus:outline-none focus:border-amber-500"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 mb-1">TELEFONO / WHATSAPP</label>
+                      <input
+                        type="text"
+                        value={regPhone}
+                        onChange={(e) => setRegPhone(e.target.value)}
+                        placeholder="238 123 4567"
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg py-1.5 px-3 text-xs text-slate-100 focus:outline-none focus:border-amber-500"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2 px-3 rounded-lg text-xs transition-colors shadow"
+                  >
+                    REGISTRAR E INGRESAR
+                  </button>
+                </form>
+
+                {/* Form 2: Resume with Folio */}
+                <form onSubmit={handleResumeWithFolio} className="space-y-4 bg-slate-950/50 p-4 rounded-2xl border border-slate-800 flex flex-col justify-between">
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-bold text-amber-400 uppercase flex items-center gap-1.5">
+                      <RefreshCw className="w-4 h-4" /> REANUDAR SESION
+                    </h4>
+                    <p className="text-[11px] text-slate-400">Si ya te inscribiste antes, ingresa tu Folio Memorable (Ej: CEUT-1001), Correo o Teléfono registrado:</p>
+                    
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 mb-1">FOLIO / CORREO / TELEFONO</label>
+                      <input
+                        type="text"
+                        value={resumeFolioInput}
+                        onChange={(e) => setResumeFolioInput(e.target.value)}
+                        placeholder="CEUT-1001"
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg py-2 px-3 text-xs text-slate-100 uppercase focus:outline-none focus:border-amber-500"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold py-2 px-3 rounded-lg text-xs transition-colors mt-4"
+                  >
+                    RECUPERAR MI AVANCE
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {}
+        {activeTab === 'workspace' && selectedCourse && (
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            
+            {/* Sidebar Modules Nav */}
+            <div className="lg:col-span-1 space-y-4">
+              <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-4 shadow-xl">
+                <div className="border-b border-slate-800 pb-3">
+                  <span className="text-[10px] font-bold text-amber-400 tracking-wider uppercase">CURSO EN CURSO</span>
+                  <h3 className="font-bold text-sm text-slate-100 mt-1">{selectedCourse.title}</h3>
+                  {currentActiveReg && (
+                    <div className="mt-2 text-[11px] text-slate-400 bg-slate-900 p-2 rounded-lg border border-slate-800 space-y-0.5">
+                      <p><strong className="text-slate-300">ALUMNO:</strong> {currentActiveReg.name}</p>
+                      <p><strong className="text-slate-300">FOLIO:</strong> <span className="text-amber-400 font-mono">{currentActiveReg.folio}</span></p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">UNIDADES DE APRENDIZAJE</p>
+                  {selectedCourse.modules?.map((mod, idx) => {
+                    const isSelected = selectedModule?.id === mod.id;
+                    const key = `${currentActiveRegFolio}-${mod.id}`;
+                    const isPassed = moduleCompletions[key]?.examPassed;
+
+                    return (
+                      <button
+                        key={mod.id}
+                        onClick={() => setSelectedModule(mod)}
+                        className={`w-full text-left p-3 rounded-xl text-xs transition-all flex items-start gap-2.5 border ${
+                          isSelected
+                            ? 'bg-amber-500/10 border-amber-500/50 text-amber-300 font-bold'
+                            : 'bg-slate-900/50 border-slate-800/80 text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                        }`}
+                      >
+                        <span className="shrink-0 mt-0.5">
+                          {isPassed ? (
+                            <CheckCircle className="w-4 h-4 text-emerald-400" />
+                          ) : (
+                            <span className="w-4 h-4 rounded-full bg-slate-800 text-[10px] flex items-center justify-center font-bold text-slate-400">
+                              {idx + 1}
+                            </span>
+                          )}
+                        </span>
+                        <div className="flex-1">
+                          <p className="line-clamp-2 leading-snug">{mod.title}</p>
+                          <p className="text-[10px] text-slate-500 mt-1 uppercase font-normal">
+                            {mod.contentType === 'video' ? '📺 VIDEO' : '📄 DOCUMENTO PDF'}
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Content & Exam Main Area */}
+            <div className="lg:col-span-3 space-y-6">
+              {selectedModule ? (
+                <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6 space-y-6 shadow-xl">
+                  
+                  {/* Module Header */}
+                  <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                    <div>
+                      <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider bg-amber-500/10 px-2.5 py-1 rounded border border-amber-500/20">
+                        {selectedModule.contentType === 'video' ? 'RECURSO AUDIOVISUAL' : 'DOCUMENTO DE LECTURA'}
+                      </span>
+                      <h2 className="text-xl font-bold text-slate-100 mt-2">
+                        {selectedModule.title}
+                      </h2>
+                    </div>
+
+                    {!hasCompletedView && (
+                      <div className="bg-slate-900 border border-slate-800 px-4 py-2 rounded-xl flex items-center gap-2 text-xs text-amber-400 font-bold">
+                        <Clock className="w-4 h-4 animate-spin" />
+                        <span>ESTUDIO EN CURSO: {countdown}S</span>
+                      </div>
+                    )}
+
+                    {hasCompletedView && (
+                      <div className="bg-emerald-500/10 border border-emerald-500/30 px-3 py-1.5 rounded-xl flex items-center gap-2 text-xs text-emerald-400 font-bold">
+                        <CheckCircle className="w-4 h-4" /> RECURSO COMPLETADO
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Resource Viewer Container */}
+                  <div className="w-full bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 h-[500px] relative flex items-center justify-center">
+                    {selectedModule.contentType === 'video' ? (
+                      <div className="w-full h-full">
+                        <div id="yt-player-container" className="w-full h-full"></div>
+                      </div>
+                    ) : (
+                      <iframe
+                        src={getEmbedUrl(selectedModule.contentUrl)}
+                        className="w-full h-full border-0"
+                        title={selectedModule.title}
+                      ></iframe>
+                    )}
+                  </div>
+
+                  {/* Exam Quiz Section */}
+                  <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 space-y-6">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                      <h3 className="font-bold text-slate-200 text-sm flex items-center gap-2">
+                        <HelpCircle className="w-4 h-4 text-amber-400" />
+                        EVALUACION DE ACREDITACION DE UNIDAD
+                      </h3>
+                      {!hasCompletedView && (
+                        <span className="text-[11px] text-amber-400 flex items-center gap-1 font-semibold">
+                          <Lock className="w-3.5 h-3.5" /> REVISA EL MATERIAL PARA DESBLOQUEAR EXAMEN
+                        </span>
+                      )}
+                    </div>
+
+                    {hasCompletedView ? (
+                      <div className="space-y-6">
+                        {selectedModule.questions?.map((q, qIndex) => (
+                          <div key={q.id} className="bg-slate-950 p-5 rounded-xl border border-slate-800 space-y-3">
+                            <p className="text-xs font-bold text-slate-200">
+                              {qIndex + 1}. {q.text}
+                            </p>
+
+                            {/* Question Type Rendering */}
+                            {q.type === 'ordering' ? (
+                              <div className="space-y-2 pt-2">
+                                <p className="text-[11px] text-slate-400 italic">Ordena la secuencia usando los botones de posición:</p>
+                                {(quizAnswers[q.id] || q.options || []).map((item, itemIdx) => (
+                                  <div key={itemIdx} className="flex items-center justify-between bg-slate-900 p-2.5 rounded-lg border border-slate-800 text-xs text-slate-300">
+                                    <span className="font-mono text-amber-400 mr-2">{itemIdx + 1}.</span>
+                                    <span className="flex-1">{item}</span>
+                                    {!quizSubmitted && (
+                                      <div className="flex items-center gap-1">
+                                        <button
+                                          type="button"
+                                          onClick={() => handleMoveOrder(q.id, itemIdx, 'up')}
+                                          disabled={itemIdx === 0}
+                                          className="p-1 hover:bg-slate-800 text-slate-400 disabled:opacity-30 rounded"
+                                        >
+                                          <ArrowUp className="w-3 h-3" />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleMoveOrder(q.id, itemIdx, 'down')}
+                                          disabled={itemIdx === (quizAnswers[q.id]?.length || q.options.length) - 1}
+                                          className="p-1 hover:bg-slate-800 text-slate-400 disabled:opacity-30 rounded"
+                                        >
+                                          <ArrowDown className="w-3 h-3" />
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="space-y-2 pt-1">
+                                {q.options?.map((opt, optIdx) => (
+                                  <label
+                                    key={optIdx}
+                                    className={`flex items-center gap-3 p-3 rounded-lg border text-xs cursor-pointer transition-colors ${
+                                      quizAnswers[q.id] === optIdx
+                                        ? 'bg-amber-500/10 border-amber-500/50 text-slate-100 font-semibold'
+                                        : 'bg-slate-900/50 border-slate-800 text-slate-400 hover:bg-slate-900'
+                                    }`}
+                                  >
+                                    <input
+                                      type="radio"
+                                      name={`q-${q.id}`}
+                                      checked={quizAnswers[q.id] === optIdx}
+                                      onChange={() => handleSelectAnswer(q.id, optIdx)}
+                                      disabled={quizSubmitted}
+                                      className="accent-amber-500"
+                                    />
+                                    <span>{opt}</span>
+                                  </label>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+
+                        {/* Quiz Results Feedback */}
+                        {quizSubmitted && (
+                          <div className={`p-4 rounded-xl border flex items-center justify-between ${
+                            quizPassed ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+                          }`}>
+                            <div>
+                              <p className="font-bold text-sm">
+                                {quizPassed ? '¡ACREDITACION APROBADA!' : 'EVALUACION REPROBADA'}
+                              </p>
+                              <p className="text-xs mt-0.5">PUNTAJE OBTENIDO: {quizScore}% (MINIMO REQUERIDO: 80%)</p>
+                            </div>
+                            {!quizPassed && (
+                              <button
+                                onClick={() => { setQuizSubmitted(false); setQuizAnswers({}); }}
+                                className="px-3 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 border border-rose-500/30 text-xs font-bold rounded-lg transition-colors"
+                              >
+                                REINTENTAR EXAMEN
+                              </button>
+                            )}
+                          </div>
+                        )}
+
+                        {!quizSubmitted && (
+                          <button
+                            onClick={handleEvaluateModule}
+                            className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-3 rounded-xl text-xs shadow-lg shadow-amber-500/10 transition-colors uppercase tracking-wider"
+                          >
+                            ENVIAR RESPUESTAS PARA EVALUACION
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 space-y-2 text-slate-500">
+                        <Lock className="w-8 h-8 mx-auto text-slate-600" />
+                        <p className="text-xs">Visualiza el recurso didáctico completo para activar el cuestionario.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-slate-950 border border-slate-800 rounded-3xl p-12 text-center text-slate-500">
+                  <BookOpen className="w-12 h-12 mx-auto text-slate-700 mb-3" />
+                  <p className="text-sm font-bold">SELECCIONA UNA UNIDAD DE APRENDIZAJE</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {}
+        {activeTab === 'audit' && (
+          <div className="space-y-6">
+            <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                <div>
+                  <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
+                    <Users className="w-5 h-5 text-amber-400" /> EXPEDIENTES DE PARTICIPANTES Y REGISTROS
+                  </h2>
+                  <p className="text-xs text-slate-400">AUDITORIA GENERAL DE INSCRIPCIONES Y EMISION DE CONSTANCIAS</p>
+                </div>
+
+                <div className="relative min-w-[280px]">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                  <input
+                    type="text"
+                    value={auditSearchQuery}
+                    onChange={(e) => setAuditSearchQuery(e.target.value)}
+                    placeholder="BUSCAR NOMBRE, FOLIO O CORREO..."
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl py-2 pl-9 pr-4 text-xs text-slate-100 uppercase focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-slate-900 border-b border-slate-800 text-slate-400 font-bold uppercase text-[10px]">
+                      <th className="p-3">FOLIO REGISTRO</th>
+                      <th className="p-3">PARTICIPANTE</th>
+                      <th className="p-3">ROL</th>
+                      <th className="p-3">CURSO / OFERTA</th>
+                      <th className="p-3">CONTACTO</th>
+                      <th className="p-3">FECHA</th>
+                      <th className="p-3">CONSTANCIA</th>
+                      <th className="p-3 text-right">ACCIONES</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60">
+                    {registrations
+                      .filter(r => {
+                        if (!auditSearchQuery.trim()) return true;
+                        const query = auditSearchQuery.toLowerCase();
+                        return (
+                          r.name?.toLowerCase().includes(query) ||
+                          r.folio?.toLowerCase().includes(query) ||
+                          r.email?.toLowerCase().includes(query) ||
+                          r.courseTitle?.toLowerCase().includes(query)
+                        );
+                      })
+                      .map(reg => {
+                        const cert = foliosAssigned[`${reg.folio}-${reg.courseId}`];
+
+                        return (
+                          <tr key={reg.id} className="hover:bg-slate-900/40 text-slate-300">
+                            <td className="p-3 font-mono font-bold text-amber-400">{reg.folio}</td>
+                            <td className="p-3 font-bold text-slate-100">{reg.name}</td>
+                            <td className="p-3">
+                              <span className="bg-slate-800 px-2 py-0.5 rounded text-[10px] font-bold text-slate-300">
+                                {reg.role}
+                              </span>
+                            </td>
+                            <td className="p-3 max-w-xs truncate">{reg.courseTitle}</td>
+                            <td className="p-3 text-slate-400 text-[11px]">
+                              <div>{reg.email}</div>
+                              <div>{reg.phone}</div>
+                            </td>
+                            <td className="p-3 text-slate-400">{reg.registeredAt}</td>
+                            <td className="p-3">
+                              {cert ? (
+                                <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded text-[10px] font-mono font-bold">
+                                  {cert.folio}
+                                </span>
+                              ) : (
+                                <span className="text-slate-600 italic">PENDIENTE</span>
+                              )}
+                            </td>
+                            <td className="p-3 text-right space-x-2">
+                              {cert && (
+                                <button
+                                  onClick={() => handleOpenCertificate(cert)}
+                                  className="p-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded-lg transition-colors"
+                                  title="Ver constancia"
+                                >
+                                  <Award className="w-4 h-4" />
+                                </button>
+                              )}
+                              <button
+                                onClick={() => handleDeleteRegistration(reg.id)}
+                                className="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-lg transition-colors"
+                                title="Eliminar registro"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {}
+        {activeTab === 'admin' && (
+          <div className="space-y-8">
+            <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-6">
+              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                <div>
+                  <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
+                    <Settings className="w-5 h-5 text-amber-400" /> CONSTRUCTOR DE CURSOS Y MODULOS
+                  </h2>
+                  <p className="text-xs text-slate-400">CREA, EDITA Y CONFIGURA LA ESTRUCTURA EDUCATIVA DEL PROGRAMA CRECE</p>
+                </div>
+
+                {editingCourseId && (
+                  <button
+                    onClick={() => {
+                      setEditingCourseId(null);
+                      setNewCourseTitle('');
+                      setNewCourseDesc('');
+                      setAdminModules([]);
+                    }}
+                    className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold"
+                  >
+                    NUEVO CURSO
+                  </button>
+                )}
+              </div>
+
+              {/* Course Meta Form */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 mb-1">TITULO DEL CURSO</label>
+                  <input
+                    type="text"
+                    value={newCourseTitle}
+                    onChange={(e) => setNewCourseTitle(e.target.value)}
+                    placeholder="EJ. SOS PRIMEROS AUXILIOS PSICOLOGICOS"
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl py-2 px-3 text-xs text-slate-100 uppercase focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 mb-1">CATEGORIA</label>
+                  <input
+                    type="text"
+                    value={newCourseCategory}
+                    onChange={(e) => setNewCourseCategory(e.target.value)}
+                    placeholder="EJ. ADMINISTRATIVO & DOCENTE"
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl py-2 px-3 text-xs text-slate-100 uppercase focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-[10px] font-bold text-slate-400 mb-1">DESCRIPCION EDUCATIVA</label>
+                  <textarea
+                    rows={2}
+                    value={newCourseDesc}
+                    onChange={(e) => setNewCourseDesc(e.target.value)}
+                    placeholder="SINOPSIS Y OBJETIVOS DEL CURSO..."
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl py-2 px-3 text-xs text-slate-100 uppercase focus:outline-none focus:border-amber-500"
+                  ></textarea>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 mb-1">HORAS CURRICULARES</label>
+                  <input
+                    type="number"
+                    value={newCourseHours}
+                    onChange={(e) => setNewCourseHours(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl py-2 px-3 text-xs text-slate-100 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 mb-1">URL BANNER DE PORTADA</label>
+                  <input
+                    type="text"
+                    value={newCourseBanner}
+                    onChange={(e) => setNewCourseBanner(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl py-2 px-3 text-xs text-slate-100 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-[10px] font-bold text-slate-400 mb-1">FRASE INSTITUCIONAL EN CONSTANCIA</label>
+                  <textarea
+                    rows={2}
+                    value={newCourseCertPhrase}
+                    onChange={(e) => setNewCourseCertPhrase(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl py-2 px-3 text-xs text-slate-100 focus:outline-none focus:border-amber-500"
+                  ></textarea>
+                </div>
+              </div>
+
+              {/* Module Builder */}
+              <div className="border-t border-slate-800 pt-6 space-y-4">
+                <h3 className="font-bold text-amber-400 text-xs uppercase flex items-center gap-2">
+                  <Plus className="w-4 h-4" /> AÑADIR UNIDAD DE APRENDIZAJE AL CURSO
+                </h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-slate-900/50 p-4 rounded-2xl border border-slate-800">
+                  <div className="md:col-span-2">
+                    <label className="block text-[10px] font-bold text-slate-400 mb-1">TITULO DE LA UNIDAD</label>
+                    <input
+                      type="text"
+                      value={modTitle}
+                      onChange={(e) => setModTitle(e.target.value)}
+                      placeholder="UNIDAD I: INTRODUCCION..."
+                      className="w-full bg-slate-900 border border-slate-700 rounded-lg py-1.5 px-3 text-xs text-slate-100 uppercase focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 mb-1">TIPO DE CONTENIDO</label>
+                    <select
+                      value={modType}
+                      onChange={(e) => setModType(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-lg py-1.5 px-3 text-xs text-slate-100 focus:outline-none focus:border-amber-500"
+                    >
+                      <option value="pdf">DOCUMENTO PDF / DRIVE</option>
+                      <option value="video">VIDEO DE YOUTUBE</option>
+                    </select>
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-[10px] font-bold text-slate-400 mb-1">URL DEL RECURSO</label>
+                    <input
+                      type="text"
+                      value={modUrl}
+                      onChange={(e) => setModUrl(e.target.value)}
+                      placeholder="https://drive.google.com/... o https://youtube.com/..."
+                      className="w-full bg-slate-900 border border-slate-700 rounded-lg py-1.5 px-3 text-xs text-slate-100 focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 mb-1">TIEMPO MINIMO REQUERIDO (SEG)</label>
+                    <input
+                      type="number"
+                      value={modDuration}
+                      onChange={(e) => setModDuration(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-lg py-1.5 px-3 text-xs text-slate-100 focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Question Builder for Module */}
+                <div className="bg-slate-900/30 p-4 rounded-2xl border border-slate-800/80 space-y-3">
+                  <h4 className="text-[11px] font-bold text-slate-300 uppercase">AGREGAR PREGUNTAS A ESTA UNIDAD</h4>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="md:col-span-2">
+                      <input
+                        type="text"
+                        value={qText}
+                        onChange={(e) => setQText(e.target.value)}
+                        placeholder="ENUNCIADO DE LA PREGUNTA..."
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg py-1.5 px-3 text-xs text-slate-100 uppercase focus:outline-none focus:border-amber-500"
+                      />
+                    </div>
+
+                    <div>
+                      <select
+                        value={qType}
+                        onChange={(e) => setQType(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg py-1.5 px-3 text-xs text-slate-100 focus:outline-none focus:border-amber-500"
+                      >
+                        <option value="multiple-choice">OPCION MULTIPLE</option>
+                        <option value="true-false">VERDADERO / FALSO</option>
+                        <option value="ordering">ORDENAMIENTO DE PASOS</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {qType === 'multiple-choice' && (
+                    <div className="space-y-2 pt-2">
+                      {qOptions.map((opt, idx) => (
+                        <div key={idx} className="flex items-center gap-2">
+                          <input
+                            type="radio"
+                            name="correct-q"
+                            checked={Number(qCorrect) === idx}
+                            onChange={() => setQCorrect(idx)}
+                            className="accent-amber-500"
+                          />
+                          <input
+                            type="text"
+                            value={opt}
+                            onChange={(e) => {
+                              const updated = [...qOptions];
+                              updated[idx] = e.target.value;
+                              setQOptions(updated);
+                            }}
+                            placeholder={`OPCION ${idx + 1}`}
+                            className="flex-1 bg-slate-900 border border-slate-700 rounded-lg py-1 px-3 text-xs text-slate-100 uppercase focus:outline-none focus:border-amber-500"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {qType === 'ordering' && (
+                    <div className="space-y-2 pt-2">
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={newOrderingItemInput}
+                          onChange={(e) => setNewOrderingItemInput(e.target.value)}
+                          placeholder="PASO DE LA SECUENCIA..."
+                          className="flex-1 bg-slate-900 border border-slate-700 rounded-lg py-1 px-3 text-xs text-slate-100 uppercase focus:outline-none focus:border-amber-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={addOrderingItemToTemp}
+                          className="px-3 py-1 bg-slate-800 text-slate-200 rounded-lg text-xs font-bold"
+                        >
+                          +
+                        </button>
+                      </div>
+                      <div className="space-y-1">
+                        {tempOrderingItems.map((item, idx) => (
+                          <p key={idx} className="text-xs text-amber-400 font-mono bg-slate-900 px-3 py-1 rounded">
+                            {idx + 1}. {item}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={addQuestionToForm}
+                    className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-lg"
+                  >
+                    + GUARDAR PREGUNTA EN UNIDAD ({adminQuestions.length} AGREGADAS)
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={addModuleToCourse}
+                  className="w-full bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-700 font-bold py-2.5 rounded-xl text-xs transition-colors"
+                >
+                  REGISTRAR UNIDAD ({adminModules.length} UNIDADES LISTAS)
+                </button>
+              </div>
+
+              <button
+                onClick={handleSaveNewCourse}
+                className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-3 rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-amber-500/10 transition-colors"
+              >
+                {editingCourseId ? 'GUARDAR CAMBIOS EN EL CURSO' : 'PUBLICAR NUEVO MICROCURSO'}
+              </button>
+            </div>
+
+            {/* Visual Drag and Drop Certificate Designer */}
+            <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-6">
+              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                <div>
+                  <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
+                    <Palette className="w-5 h-5 text-amber-400" /> DISEÑADOR VISUAL DE CONSTANCIAS
+                  </h2>
+                  <p className="text-xs text-slate-400">AJUSTA LA POSICION, TAMAÑO Y ALINEACION DE LOS CAMPOS DE LA CONSTANCIA</p>
+                </div>
+
+                <button
+                  onClick={handleSaveDesignerCoordsToCourse}
+                  className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-xs flex items-center gap-2 transition-colors"
+                >
+                  <Save className="w-4 h-4" /> GUARDAR EN CURSO ACTIVO
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                {/* Visual Canvas Area */}
+                <div className="lg:col-span-2">
+                  <div 
+                    ref={designCanvasRef}
+                    className="relative w-full aspect-[1.414/1] bg-slate-900 rounded-2xl overflow-hidden border-2 border-slate-700 select-none shadow-2xl"
+                  >
+                    <img 
+                      src={getDriveImageUrl(CERTIFICATE_TEMPLATE_URL)} 
+                      alt="Plantilla" 
+                      className="w-full h-full object-cover opacity-80"
+                      onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1579546929518-9e396f3cc809?q=80&w=1200"; }}
+                    />
+
+                    {/* Dynamic Element Boxes */}
+                    {Object.keys(designerCoords).map(boxId => {
+                      const box = designerCoords[boxId];
+                      const isSelected = activeBoxId === boxId;
+
+                      return (
+                        <div
+                          key={boxId}
+                          onMouseDown={(e) => handleMouseDownOnBox(e, boxId)}
+                          style={{
+                            left: `${box.left}%`,
+                            top: `${box.top}%`,
+                            width: `${box.width}%`,
+                            height: `${box.height}%`,
+                            fontSize: `${box.fontSize / 2}px`,
+                            textAlign: box.align,
+                            color: box.color
+                          }}
+                          className={`absolute cursor-move flex items-center justify-center p-1 rounded transition-all ${
+                            isSelected 
+                              ? 'border-2 border-amber-400 bg-amber-500/20 shadow-lg' 
+                              : 'border border-dashed border-slate-400/50 bg-slate-900/40 hover:border-slate-200'
+                          }`}
+                        >
+                          <span className="font-bold truncate uppercase tracking-wider">
+                            {boxId === 'name' && '[NOMBRE ALUMNO]'}
+                            {boxId === 'course' && '[TITULO CURSO]'}
+                            {boxId === 'phrase' && '[FRASE INSTITUCIONAL]'}
+                            {boxId === 'date' && '[FECHA DE EMISION]'}
+                            {boxId === 'folio' && '[FOLIO OFICIAL]'}
+                            {boxId === 'qr' && '[QR DE VALIDACION]'}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Element Control Panel */}
+                <div className="space-y-4 bg-slate-900/60 p-4 rounded-2xl border border-slate-800">
+                  <h3 className="font-bold text-xs text-amber-400 uppercase">PROPIEDADES DEL ELEMENTO</h3>
+                  
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 mb-1">ELEMENTO SELECCIONADO</label>
+                    <select
+                      value={activeBoxId}
+                      onChange={(e) => setActiveBoxId(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-lg py-1.5 px-3 text-xs text-slate-100 uppercase focus:outline-none focus:border-amber-500"
+                    >
+                      <option value="name">NOMBRE DEL PARTICIPANTE</option>
+                      <option value="course">TITULO DEL CURSO</option>
+                      <option value="phrase">FRASE INSTITUCIONAL</option>
+                      <option value="date">FECHA DE EXPEDICION</option>
+                      <option value="folio">FOLIO OFICIAL</option>
+                      <option value="qr">CODIGO QR</option>
+                    </select>
+                  </div>
+
+                  {designerCoords[activeBoxId] && (
+                    <div className="space-y-3 pt-2 border-t border-slate-800">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[10px] text-slate-400">POSICION X (%)</label>
+                          <input
+                            type="number"
+                            value={designerCoords[activeBoxId].left}
+                            onChange={(e) => handleCoordChange(activeBoxId, 'left', Number(e.target.value))}
+                            className="w-full bg-slate-900 border border-slate-700 rounded py-1 px-2 text-xs text-slate-100"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-slate-400">POSICION Y (%)</label>
+                          <input
+                            type="number"
+                            value={designerCoords[activeBoxId].top}
+                            onChange={(e) => handleCoordChange(activeBoxId, 'top', Number(e.target.value))}
+                            className="w-full bg-slate-900 border border-slate-700 rounded py-1 px-2 text-xs text-slate-100"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-slate-400">ANCHO (%)</label>
+                          <input
+                            type="number"
+                            value={designerCoords[activeBoxId].width}
+                            onChange={(e) => handleCoordChange(activeBoxId, 'width', Number(e.target.value))}
+                            className="w-full bg-slate-900 border border-slate-700 rounded py-1 px-2 text-xs text-slate-100"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-slate-400">TAMAÑO FUENTE</label>
+                          <input
+                            type="number"
+                            value={designerCoords[activeBoxId].fontSize}
+                            onChange={(e) => handleCoordChange(activeBoxId, 'fontSize', Number(e.target.value))}
+                            className="w-full bg-slate-900 border border-slate-700 rounded py-1 px-2 text-xs text-slate-100"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] text-slate-400 mb-1">ALINEACION</label>
+                        <div className="flex gap-2">
+                          {['left', 'center', 'right'].map(align => (
+                            <button
+                              key={align}
+                              onClick={() => handleCoordChange(activeBoxId, 'align', align)}
+                              className={`flex-1 py-1 text-xs rounded uppercase font-bold border ${
+                                designerCoords[activeBoxId].align === align
+                                  ? 'bg-amber-500 text-slate-950 border-amber-400'
+                                  : 'bg-slate-900 text-slate-400 border-slate-700'
+                              }`}
+                            >
+                              {align}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* System Security & Password Configuration */}
+            <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
+              <h3 className="font-bold text-slate-200 text-sm flex items-center gap-2">
+                <Lock className="w-4 h-4 text-amber-400" /> CAMBIAR CONTRASEÑA ADMINISTRATIVA
+              </h3>
+              
+              <form onSubmit={handleChangePassword} className="flex gap-3 max-w-md">
+                <input
+                  type="password"
+                  value={newPasswordInput}
+                  onChange={(e) => setNewPasswordInput(e.target.value)}
+                  placeholder="NUEVA CONTRASEÑA..."
+                  className="flex-1 bg-slate-900 border border-slate-700 rounded-xl py-2 px-3 text-xs text-slate-100 focus:outline-none focus:border-amber-500"
+                />
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs transition-colors"
+                >
+                  ACTUALIZAR
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+      </main>
+
+      {}
+      {certModal && (
+        <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 flex items-center justify-center p-4 print:p-0 print:bg-white print:static">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-5xl w-full p-6 space-y-6 shadow-2xl print:border-0 print:shadow-none print:p-0">
+            
+            {/* Modal Controls Bar */}
+            <div className="flex items-center justify-between border-b border-slate-800 pb-4 print:hidden">
+              <div className="flex items-center gap-2 text-amber-400 font-bold text-sm">
+                <Award className="w-5 h-5" />
+                <span>CONSTANCIA OFICIAL DE EMISION | {manualCertFolio}</span>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => window.print()}
+                  className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl text-xs flex items-center gap-2 transition-colors shadow"
+                >
+                  <Printer className="w-4 h-4" /> IMPRIMIR CONSTANCIA
+                </button>
+                <button
+                  onClick={() => setCertModal(null)}
+                  className="text-slate-400 hover:text-slate-200 p-1"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {/* Print Canvas Container */}
+            <div 
+              ref={printCanvasRef}
+              className="relative w-full aspect-[1.414/1] bg-white text-slate-950 overflow-hidden shadow-2xl rounded-xl print:shadow-none print:rounded-none"
+            >
+              <img 
+                src={getDriveImageUrl(CERTIFICATE_TEMPLATE_URL)} 
+                alt="Plantilla Constancia" 
+                className="w-full h-full object-cover"
+                onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1579546929518-9e396f3cc809?q=80&w=1200"; }}
+              />
+
+              {/* Dynamic Overlay Fields */}
+              <div 
+                style={{
+                  position: 'absolute',
+                  left: `${currentPrintCoords.name?.left}%`,
+                  top: `${currentPrintCoords.name?.top}%`,
+                  width: `${currentPrintCoords.name?.width}%`,
+                  height: `${currentPrintCoords.name?.height}%`,
+                  textAlign: currentPrintCoords.name?.align || 'center',
+                  fontSize: `${currentPrintCoords.name?.fontSize}px`,
+                  color: currentPrintCoords.name?.color || '#151c2d'
+                }}
+                className="font-black uppercase tracking-wider flex items-center justify-center leading-none"
+              >
+                {manualCertName}
+              </div>
+
+              <div 
+                style={{
+                  position: 'absolute',
+                  left: `${currentPrintCoords.course?.left}%`,
+                  top: `${currentPrintCoords.course?.top}%`,
+                  width: `${currentPrintCoords.course?.width}%`,
+                  height: `${currentPrintCoords.course?.height}%`,
+                  textAlign: currentPrintCoords.course?.align || 'center',
+                  fontSize: `${currentPrintCoords.course?.fontSize}px`,
+                  color: currentPrintCoords.course?.color || '#151c2d'
+                }}
+                className="font-black uppercase tracking-wider flex items-center justify-center leading-tight"
+              >
+                "{manualCertCourse}"
+              </div>
+
+              <div 
+                style={{
+                  position: 'absolute',
+                  left: `${currentPrintCoords.phrase?.left}%`,
+                  top: `${currentPrintCoords.phrase?.top}%`,
+                  width: `${currentPrintCoords.phrase?.width}%`,
+                  height: `${currentPrintCoords.phrase?.height}%`,
+                  textAlign: currentPrintCoords.phrase?.align || 'center',
+                  fontSize: `${currentPrintCoords.phrase?.fontSize}px`,
+                  color: currentPrintCoords.phrase?.color || '#151c2d'
+                }}
+                className="font-medium leading-normal flex items-center justify-center"
+              >
+                {parseDynamicTags(manualCertPhrase, { student: manualCertName, courseTitle: manualCertCourse, folio: manualCertFolio, date: manualCertDate })}
+              </div>
+
+              <div 
+                style={{
+                  position: 'absolute',
+                  left: `${currentPrintCoords.date?.left}%`,
+                  top: `${currentPrintCoords.date?.top}%`,
+                  width: `${currentPrintCoords.date?.width}%`,
+                  height: `${currentPrintCoords.date?.height}%`,
+                  textAlign: currentPrintCoords.date?.align || 'center',
+                  fontSize: `${currentPrintCoords.date?.fontSize}px`,
+                  color: currentPrintCoords.date?.color || '#151c2d'
+                }}
+                className="font-bold uppercase tracking-wider flex items-center justify-center"
+              >
+                {manualCertDate}
+              </div>
+
+              <div 
+                style={{
+                  position: 'absolute',
+                  left: `${currentPrintCoords.folio?.left}%`,
+                  top: `${currentPrintCoords.folio?.top}%`,
+                  width: `${currentPrintCoords.folio?.width}%`,
+                  height: `${currentPrintCoords.folio?.height}%`,
+                  textAlign: currentPrintCoords.folio?.align || 'left',
+                  fontSize: `${currentPrintCoords.folio?.fontSize}px`,
+                  color: currentPrintCoords.folio?.color || '#151c2d'
+                }}
+                className="font-mono font-bold uppercase tracking-wider flex items-center"
+              >
+                FOLIO: {manualCertFolio}
+              </div>
+
+              <div 
+                style={{
+                  position: 'absolute',
+                  left: `${currentPrintCoords.qr?.left}%`,
+                  top: `${currentPrintCoords.qr?.top}%`,
+                  width: `${currentPrintCoords.qr?.width}%`,
+                  height: `${currentPrintCoords.qr?.height}%`
+                }}
+                className="flex items-center justify-center"
+              >
+                <QRCodeSVG value={`CEUT-VALIDATION|${manualCertFolio}|${manualCertName}`} />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Footer */}
+      <footer className="bg-slate-950 border-t border-slate-800 py-4 px-6 text-center text-xs text-slate-500 print:hidden">
+        CENTRO DE ESTUDIOS UNIVERSITARIOS TEHUACAN © {new Date().getFullYear()} — SISTEMA DE MICROCURSOS Y EXPEDICION DE CONSTANCIAS
+      </footer>
+    </div>
+  );
+}

@@ -115,5 +115,201 @@ Luego publica y recarga. También habilita Authentication > Anonymous.`);else xe
   setInterval(enhanceBannerInput, 1000);
 })();
 </script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script>
+(function(){
+  window.__CEUT_DATA__ = {registrations:[], completions:{}, certificates:{}, courses:[]};
+  
+  // Capturar datos via intercept de localStorage y via lectura de Firestore si posible
+  // Guardar cada vez que se setea en localStorage
+  const origSetItem = localStorage.setItem;
+  localStorage.setItem = function(k,v){
+    try{
+      if(k==='ceut_registrations_cache'){
+        const arr = JSON.parse(v);
+        if(Array.isArray(arr)) window.__CEUT_DATA__.registrations = arr;
+      }
+    }catch(e){}
+    return origSetItem.apply(this, arguments);
+  };
+
+  // Intentar capturar de las variables globales l,d,v mediante proxy de console.log que ya usamos
+  // Metodo: cada 2 seg buscar si hay tabla de registros con datos y guardar cache
+  setInterval(()=>{
+    try{
+      const regs = window.__CEUT_DATA__.registrations;
+      if(regs.length>0) localStorage.setItem('ceut_registrations_cache', JSON.stringify(regs));
+    }catch(e){}
+  }, 2000);
+
+  // Funcion para leer datos reales de Firestore usando el mismo proyecto si no hay cache
+  // Usamos la instancia q que existe en el bundle (firestore)
+  let firebaseCheck = setInterval(()=>{
+    try{
+      if(typeof q !== 'undefined' && q && window.__CEUT_DATA__.registrations.length===0){
+        // q es firestore instance, intentar usar la funcion gt que ya hace onSnapshot para guardar
+        // Parcheamos gt para capturar
+        if(typeof gt !== 'undefined' && !gt._patched){
+          const origGt = gt;
+          gt = function(c, cb, err){
+            return origGt(c, (snap)=>{
+              try{
+                let arr=[];
+                snap.forEach(doc=>arr.push({id:doc.id, ...doc.data()}));
+                // Detectar tipo por coleccion path
+                const path = c.path || '';
+                if(path.includes('registrations')) window.__CEUT_DATA__.registrations = arr;
+                if(path.includes('completions')) {
+                  const obj={};
+                  arr.forEach(it=>obj[it.id]=it);
+                  window.__CEUT_DATA__.completions = obj;
+                }
+                if(path.includes('certificates')){
+                  const obj={};
+                  arr.forEach(it=>obj[it.id]=it);
+                  window.__CEUT_DATA__.certificates = obj;
+                }
+                if(path.includes('courses')) window.__CEUT_DATA__.courses = arr;
+              }catch(e){}
+              cb(snap);
+            }, err);
+          };
+          gt._patched=true;
+          clearInterval(firebaseCheck);
+          location.reload(); // recargar para que los nuevos listeners capturen
+        }
+      }
+    }catch(e){}
+  }, 1000);
+
+  window.descargarListaFormalMembretada = function(courseId, courseTitle){
+    const regs = window.__CEUT_DATA__.registrations;
+    const comps = window.__CEUT_DATA__.completions;
+    const certs = window.__CEUT_DATA__.certificates;
+    if(!regs || regs.length===0){
+      alert('Aun no hay datos de nube. Ve a AUDITORIA > EXPEDIENTES para cargar, espera 3 segundos y reintenta. (Solo admin)');
+      return;
+    }
+    let filtered = regs;
+    if(courseId) filtered = regs.filter(r=> r.courseId===courseId);
+    if(filtered.length===0 && courseTitle) filtered = regs.filter(r=> (r.courseTitle||'').toUpperCase().includes(courseTitle.toUpperCase()));
+    if(filtered.length===0){ alert('No hay participantes para '+courseTitle); return; }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('landscape','mm','a4');
+    doc.setFillColor(245,158,11);
+    doc.rect(0,0,297,22,'F');
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(14);
+    doc.setTextColor(15,23,42);
+    doc.text('CENTRO EDUCATIVO UNIVERSITARIO TLACUITLAPA', 14, 10);
+    doc.setFontSize(10);
+    doc.text('DIRECCION ACADEMICA - LISTA OFICIAL DE PARTICIPANTES', 14, 16);
+    doc.setFontSize(8);
+    doc.text('Tehuacan, Puebla | Capacitacion Continua CEUT', 200, 10);
+    doc.text('Fecha: '+new Date().toLocaleDateString('es-MX',{year:'numeric',month:'long',day:'numeric'}).toUpperCase(), 200, 16);
+    doc.setTextColor(0,0,0);
+    doc.setFontSize(12);
+    doc.text('CURSO: '+(courseTitle||'TODOS').toUpperCase(), 14, 30);
+    doc.setFontSize(9);
+    doc.setFont('helvetica','normal');
+    doc.text('Total: '+filtered.length+' | Admin | Folio: CEUT-LISTA-'+Date.now().toString().slice(-6), 14, 35);
+    const rows = filtered.map((r,i)=>{
+      const comp = comps[r.folio+'-'+r.courseId] || comps[r.folio] || {};
+      const cert = certs[r.folio+'-'+r.courseId] || certs[r.folio] || {};
+      return [i+1, r.folio||'', r.name||'', r.role||'', r.email||'', r.phone||'', comp.examPassed?'ACREDITADO':'NO ACREDITADO', (comp.score||'')+'', cert.folio||'PENDIENTE', r.registeredAt||''];
+    });
+    doc.autoTable({
+      startY: 38,
+      head: [['#','FOLIO','NOMBRE','ROL','EMAIL','TELEFONO','ACREDITACION','SCORE','FOLIO CONSTANCIA','FECHA REG']],
+      body: rows,
+      theme: 'grid',
+      headStyles: {fillColor:[15,23,42], textColor:[245,158,11], fontSize:7, fontStyle:'bold'},
+      bodyStyles: {fontSize:6},
+      styles: {cellPadding:2}
+    });
+    const finalY = doc.lastAutoTable.finalY + 10;
+    doc.setFontSize(8);
+    doc.setFont('helvetica','italic');
+    doc.text('Documento oficial membretado para entrega a Directora Academica. Valida participacion y acreditacion.', 14, finalY);
+    doc.setFont('helvetica','bold');
+    doc.text('___________________________________________', 14, finalY+20);
+    doc.text('ADMINISTRADOR CEUT - FIRMA Y SELLO', 14, finalY+25);
+    doc.text('___________________________________________', 200, finalY+20);
+    doc.text('DIRECTORA ACADEMICA - Vo.Bo.', 210, finalY+25);
+    doc.save('LISTA_FORMAL_'+(courseTitle||'TODOS').replace(/[^A-Z0-9]/gi,'_').toUpperCase()+'_'+new Date().toISOString().slice(0,10)+'.pdf');
+  };
+
+  function agregarBotonesYStats(){
+    // Estadisticas
+    const h2s = document.querySelectorAll('h2');
+    h2s.forEach(h=>{
+      if(h.textContent.includes('EXPEDIENTES') && !document.getElementById('panel-estadisticas-mes')){
+        const container = h.closest('div.bg-slate-950');
+        if(!container) return;
+        const statsDiv = document.createElement('div');
+        statsDiv.id='panel-estadisticas-mes';
+        statsDiv.style.cssText='margin-top:16px;background:#0f172a;border:1px solid #f59e0b;border-radius:16px;padding:16px';
+        statsDiv.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><h3 style="color:#f59e0b;font-weight:900;font-size:12px">📊 ESTADISTICA POR MES Y AÑO</h3><button id="btn-actualizar-stats" style="padding:6px 12px;background:#1e293b;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:10px;font-weight:800">🔄 ACTUALIZAR</button></div><div id="stats-contenido" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px"></div><div id="stats-anual" style="margin-top:12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px"></div>';
+        container.parentElement.insertBefore(statsDiv, container.nextSibling);
+        document.getElementById('btn-actualizar-stats').onclick = ()=>{ calcularStats(); };
+        calcularStats();
+      }
+    });
+
+    // Botones por curso
+    const cards = document.querySelectorAll('div.bg-slate-950');
+    cards.forEach(card=>{
+      if(card.querySelector('.btn-formal-curso')) return;
+      if(!card.textContent.includes('BLOQUEAR / DESBLOQUEAR')) return;
+      const titleEl = card.querySelector('h3, h4');
+      if(!titleEl) return;
+      const title = titleEl.textContent.trim();
+      const btn = document.createElement('button');
+      btn.className='btn-formal-curso';
+      btn.textContent='📄 DESCARGAR LISTA FORMAL MEMBRETADA (SOLO ADMIN) - PDF';
+      btn.style.cssText='width:100%;margin-top:12px;padding:10px;background:#f59e0b;color:#0f172a;border-radius:10px;font-size:11px;font-weight:900;border:none;cursor:pointer';
+      btn.onclick = ()=>{ if(confirm('Generar PDF formal membretado para Directora Academica del curso: '+title+'?')) window.descargarListaFormalMembretada('', title); };
+      card.appendChild(btn);
+    });
+  }
+
+  window.calcularStats = function(){
+    const data = window.__CEUT_DATA__.registrations;
+    if(!data || data.length===0){
+      const el = document.getElementById('stats-contenido');
+      if(el) el.innerHTML='<div style="color:#64748b;font-size:11px">Cargando datos... ve a Expedientes y espera</div>';
+      return;
+    }
+    const porMes={}, porAnio={};
+    data.forEach(r=>{
+      let d;
+      try{ d = new Date(r.registeredAt); if(isNaN(d)) d=new Date(); }catch(e){ d=new Date(); }
+      const mesAnio = (d.getMonth()+1).toString().padStart(2,'0')+'/'+d.getFullYear();
+      const anio = d.getFullYear().toString();
+      porMes[mesAnio]=(porMes[mesAnio]||0)+1;
+      porAnio[anio]=(porAnio[anio]||0)+1;
+    });
+    document.getElementById('stats-contenido').innerHTML = Object.entries(porMes).sort().map(([k,v])=>`<div style="background:#020617;border:1px solid #1e293b;border-radius:10px;padding:10px;text-align:center"><div style="color:#94a3b8;font-size:10px;font-weight:700">${k}</div><div style="color:#f59e0b;font-size:22px;font-weight:900">${v}</div></div>`).join('');
+    document.getElementById('stats-anual').innerHTML = Object.entries(porAnio).sort().map(([k,v])=>`<div style="background:#052e16;border:1px solid #16a34a;border-radius:10px;padding:10px;text-align:center"><div style="color:#86efac;font-size:10px">AÑO ${k}</div><div style="color:#22c55e;font-size:20px;font-weight:900">${v}</div></div>`).join('') + `<div style="background:#1e293b;border-radius:10px;padding:10px;text-align:center"><div style="color:#94a3b8;font-size:10px">TOTAL</div><div style="color:#e2e8f0;font-size:20px;font-weight:900">${data.length}</div></div>`;
+  };
+
+  setInterval(agregarBotonesYStats, 1500);
+})();
+</script>
+
+<script>
+try{
+  // Limpiar cajas personalizadas para que quede vacia como pides
+  // Pero no borrar si ya tiene cajas del usuario
+  const hasCustom = localStorage.getItem('ceut_custom_boxes') || localStorage.getItem('ceut_custom_boxes_v2');
+  // Si quieres vacia siempre al inicio, descomenta:
+  // localStorage.removeItem('ceut_custom_boxes');
+  // localStorage.removeItem('ceut_custom_boxes_v2');
+  // localStorage.removeItem('ceut_custom_boxes_v3');
+}catch(e){}
+</script>
 </body>
 </html>

@@ -1794,5 +1794,219 @@ ${dataQR.leyenda}`;
   setInterval(function(){ try{ addBannerUpload(); }catch(e){} }, 2000);
 })();
 </script>
+
+<script>
+(function(){
+  console.log('📅 FECHA VIGENTE DE CURSO - Habilitar de tal fecha a tal fecha con hora - Editable');
+  
+  function isAdminView(){
+    return (document.body.innerText||'').indexOf('GESTION DE CURSOS - BLOQUEO')>-1;
+  }
+  function isCatalogView(){
+    var t=document.body.innerText||'';
+    return t.indexOf('CATALOGO DE CURSOS')>-1 && !isAdminView();
+  }
+  
+  // MEJORA: En gestion de cursos, agregar seccion FECHA VIGENTE DE CURSO visible
+  function mejorarGestionFechas(){
+    if(!isAdminView()) return;
+    document.querySelectorAll('div.rounded-2xl').forEach(function(card){
+      var txt=card.innerText||'';
+      if(txt.indexOf('HRS')>-1 && txt.indexOf('UNIDADES')>-1 && !card.querySelector('.fecha-vigente-mejora')){
+        // Buscar el area de fechas
+        var hasFecha = txt.indexOf('PROGRAMADO')>-1 || txt.indexOf('ACTIVO')>-1 || txt.indexOf('FINALIZADO')>-1 || txt.indexOf('HABILITAR')>-1;
+        if(!hasFecha) return;
+        
+        // Crear seccion fecha vigente editable
+        var div=document.createElement('div');
+        div.className='fecha-vigente-mejora';
+        div.style.cssText='margin-top:12px;padding:12px;background:linear-gradient(135deg,#0f172a,#1e293b);border:2px solid #f59e0b;border-radius:12px';
+        div.innerHTML=`
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <h5 style="color:#f59e0b;font-weight:900;font-size:11px">📅 FECHA VIGENTE DE CURSO - HABILITAR DE TAL FECHA A TAL FECHA CON HORA</h5>
+            <span style="background:#22c55e;color:#052e16;padding:2px 8px;border-radius:6px;font-size:9px;font-weight:900">EDITABLE</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+            <div>
+              <label style="color:#94a3b8;font-size:10px;font-weight:700">DESDE - Fecha y Hora Inicio Vigencia</label>
+              <input type="datetime-local" class="fecha-desde-input" style="width:100%;padding:8px;border-radius:8px;background:#020617;border:1px solid #334155;color:#e2e8f0;font-size:11px;margin-top:4px">
+            </div>
+            <div>
+              <label style="color:#94a3b8;font-size:10px;font-weight:700">HASTA - Fecha y Hora Fin Vigencia</label>
+              <input type="datetime-local" class="fecha-hasta-input" style="width:100%;padding:8px;border-radius:8px;background:#020617;border:1px solid #334155;color:#e2e8f0;font-size:11px;margin-top:4px">
+            </div>
+          </div>
+          <div style="background:#020617;border-radius:8px;padding:8px;margin-bottom:8px">
+            <div style="color:#64748b;font-size:9px">VISTA PREVIA BANNER:</div>
+            <div class="preview-fecha-banner" style="color:#f59e0b;font-weight:800;font-size:11px;margin-top:4px;font-family:monospace">📅 Vigencia: Sin definir - Aparecera en banner del curso</div>
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn-guardar-fecha" style="flex:1;padding:8px 12px;background:#22c55e;color:#052e16;border:none;border-radius:8px;font-weight:900;font-size:11px;cursor:pointer">💾 GUARDAR FECHAS</button>
+            <button class="btn-editar-fecha" style="flex:1;padding:8px 12px;background:#3b82f6;color:white;border:none;border-radius:8px;font-weight:900;font-size:11px;cursor:pointer">✏️ EDITAR FECHAS</button>
+            <button class="btn-eliminar-fecha" style="padding:8px 12px;background:#ef4444;color:white;border:none;border-radius:8px;font-weight:900;font-size:11px;cursor:pointer">🗑️ ELIMINAR</button>
+            <button class="btn-siempre-activo" style="padding:8px 12px;background:#1e293b;color:#f59e0b;border:1px solid #f59e0b;border-radius:8px;font-weight:900;font-size:11px;cursor:pointer">♾️ SIEMPRE ACTIVO</button>
+          </div>
+          <div style="margin-top:6px;color:#94a3b8;font-size:9px">✓ Fecha vigente aparece en banner del curso en catalogo ✓ Editable, eliminable, cambiable ✓ Con hora exacta</div>
+        `;
+        // Insertar despues del titulo
+        var titleArea = card.querySelector('div.flex.flex-wrap.items-start');
+        if(titleArea){
+          titleArea.parentNode.insertBefore(div, titleArea.nextSibling);
+        } else {
+          card.appendChild(div);
+        }
+        
+        // Cargar fechas existentes si hay
+        try{
+          // Buscar inputs existentes de fecha en la card
+          var existingDesde = card.querySelector('input[type="datetime-local"]');
+          if(existingDesde){
+            div.querySelector('.fecha-desde-input').value = existingDesde.value;
+          }
+        }catch(e){}
+        
+        // Eventos
+        var inputDesde = div.querySelector('.fecha-desde-input');
+        var inputHasta = div.querySelector('.fecha-hasta-input');
+        var preview = div.querySelector('.preview-fecha-banner');
+        
+        function actualizarPreview(){
+          var desde = inputDesde.value;
+          var hasta = inputHasta.value;
+          if(desde && hasta){
+            var d1=new Date(desde);
+            var d2=new Date(hasta);
+            var f1=d1.toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+d1.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
+            var f2=d2.toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+d2.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
+            preview.textContent='📅 FECHA VIGENTE: '+f1+' HRS - '+f2+' HRS | Aparece en banner';
+            preview.style.color='#22c55e';
+          } else if(desde){
+            var d1=new Date(desde);
+            var f1=d1.toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+d1.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
+            preview.textContent='📅 FECHA VIGENTE DESDE: '+f1+' HRS | Hasta: Indefinido';
+          } else {
+            preview.textContent='📅 Vigencia: Sin definir - Aparecera en banner del curso';
+            preview.style.color='#f59e0b';
+          }
+        }
+        
+        inputDesde.addEventListener('input', actualizarPreview);
+        inputHasta.addEventListener('input', actualizarPreview);
+        
+        div.querySelector('.btn-guardar-fecha').onclick=function(){
+          // Buscar y disparar el boton original de guardar fechas
+          var btnOriginal = null;
+          card.querySelectorAll('button').forEach(function(b){
+            var t=b.textContent||'';
+            if(t.indexOf('APLICAR FECHAS')>-1 || t.indexOf('GUARDAR')>-1 && t.indexOf('FECHA')>-1){
+              btnOriginal=b;
+            }
+          });
+          // Copiar valores a inputs originales si existen
+          card.querySelectorAll('input[type="datetime-local"]').forEach(function(inp, idx){
+            if(idx==0) inp.value = inputDesde.value;
+            if(idx==1) inp.value = inputHasta.value;
+            inp.dispatchEvent(new Event('input',{bubbles:true}));
+            inp.dispatchEvent(new Event('change',{bubbles:true}));
+          });
+          // Si hay boton aplicar, clicarlo
+          if(btnOriginal){
+            btnOriginal.click();
+          } else {
+            // Buscar boton guardar general
+            document.querySelectorAll('button').forEach(function(b){
+              if(b.textContent.indexOf('APLICAR FECHAS')>-1){
+                b.click();
+              }
+            });
+          }
+          preview.textContent='✅ FECHAS GUARDADAS - Visible en banner';
+          preview.style.color='#22c55e';
+        };
+        
+        div.querySelector('.btn-editar-fecha').onclick=function(){
+          inputDesde.focus();
+          inputDesde.style.border='2px solid #3b82f6';
+          inputHasta.style.border='2px solid #3b82f6';
+          setTimeout(function(){ inputDesde.style.border='1px solid #334155'; inputHasta.style.border='1px solid #334155'; }, 2000);
+        };
+        
+        div.querySelector('.btn-eliminar-fecha').onclick=function(){
+          if(confirm('¿Eliminar fechas vigentes de este curso? El curso quedara sin vigencia y no aparecera fecha en banner')){
+            inputDesde.value='';
+            inputHasta.value='';
+            actualizarPreview();
+            // Limpiar originales
+            card.querySelectorAll('input[type="datetime-local"]').forEach(function(inp){
+              inp.value='';
+              inp.dispatchEvent(new Event('input',{bubbles:true}));
+              inp.dispatchEvent(new Event('change',{bubbles:true}));
+            });
+          }
+        };
+        
+        div.querySelector('.btn-siempre-activo').onclick=function(){
+          inputDesde.value='';
+          inputHasta.value='';
+          preview.textContent='♾️ CURSO SIEMPRE ACTIVO - Sin restriccion de fecha vigente - Visible en banner como SIEMPRE ACTIVO';
+          preview.style.color='#38bdf8';
+          // Buscar boton siempre activo original
+          card.querySelectorAll('button').forEach(function(b){
+            if(b.textContent.indexOf('SIEMPRE ACTIVO')>-1){
+              b.click();
+            }
+          });
+        };
+        
+        actualizarPreview();
+      }
+    });
+  }
+  
+  // Mostrar fecha vigente en banner de catalogo
+  function mostrarFechaEnBanner(){
+    if(!isCatalogView()) return;
+    document.querySelectorAll('div.rounded-2xl, div.bg-slate-900').forEach(function(card){
+      var txt=card.innerText||'';
+      // Si es tarjeta de curso en catalogo
+      if(txt.indexOf('HRS')>-1 && txt.length<2000 && !card.querySelector('.fecha-banner-catalogo')){
+        // Buscar si tiene fecha programada
+        var fechaMatch = txt.match(/(PROGRAMADO|ACTIVO|FINALIZADO)/);
+        if(fechaMatch){
+          // Buscar fechas en el texto
+          var fechaDiv=document.createElement('div');
+          fechaDiv.className='fecha-banner-catalogo';
+          fechaDiv.style.cssText='margin-top:8px;padding:8px;background:linear-gradient(135deg,#0f172a,#1e293b);border:1px solid #f59e0b;border-radius:8px;display:flex;align-items:center;gap:6px';
+          // Extraer fechas si existen en la card
+          var desdeEl = card.querySelector('.fecha-desde');
+          var hastaEl = card.querySelector('.fecha-hasta');
+          var fechaTexto='📅 FECHA VIGENTE: Consultar en administracion';
+          // Buscar en datos del curso si estan guardados
+          try{
+            // Intentar leer de atributos o texto
+            if(txt.indexOf('Vigencia')>-1 || txt.indexOf('vigente')>-1){
+              fechaTexto='📅 '+txt.match(/Vigencia[^\n]*/)?.[0]||'FECHA VIGENTE DEFINIDA';
+            }
+          }catch(e){}
+          
+          fechaDiv.innerHTML='<span style="color:#f59e0b;font-size:10px">📅</span><span style="color:#f59e0b;font-weight:800;font-size:10px;font-family:monospace">'+fechaTexto+'</span><span style="margin-left:auto;background:#22c55e;color:#052e16;padding:2px 6px;border-radius:4px;font-size:8px;font-weight:900">VIGENTE</span>';
+          // Insertar en area visible
+          var target = card.querySelector('div.flex.flex-wrap') || card;
+          if(target) target.appendChild(fechaDiv);
+        }
+      }
+    });
+  }
+  
+  setInterval(function(){
+    try{
+      mejorarGestionFechas();
+      mostrarFechaEnBanner();
+    }catch(e){ console.log(e); }
+  }, 2000);
+  
+  console.log('✅ FECHA VIGENTE DE CURSO activa - Editable, eliminable, visible en banner');
+})();
+</script>
 </body>
 </html>

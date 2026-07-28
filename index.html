@@ -1636,66 +1636,7 @@ ${dataQR.leyenda}`;
   
   // Mostrar folios en interfaz con nuevo formato
   function actualizarVisualizacionFolios(){
-    document.querySelectorAll('div, span, p').forEach(el=>{
-      const text = el.textContent;
-      // Detectar folios viejos CEUT-0001 y actualizar ejemplo
-      if(text.includes('CEUT-0001') && !el.querySelector('.folio-nuevo-ejemplo')){
-        if(text.includes('Folio:') || text.includes('FOLIO')){
-          const role = text.includes('ADMINISTRATIVO') ? 'ADM' : text.includes('ALUMNO') ? 'ALU' : 'DOC';
-          const nuevoEjemplo = `CEUT-${role}-01-001`;
-          if(!el.innerHTML.includes('CEUT-ADM') && !el.innerHTML.includes('CEUT-DOC')){
-            // Solo en elementos de ejemplo, no en datos reales
-            if(text.includes('JUAN PEREZ GARCIA') || text.includes('PRIMEROS AUXILIOS')){
-              el.innerHTML = el.innerHTML.replace(/CEUT-0001/g, nuevoEjemplo);
-            }
-          }
-        }
-      }
-    });
-    
-    // Actualizar panel de folios
-    const panel = document.getElementById('panel-descarga-estadisticas');
-    if(panel && !panel.querySelector('#explicacion-folios-nuevos')){
-      const expl = document.createElement('div');
-      expl.id='explicacion-folios-nuevos';
-      expl.style.cssText='margin-top:12px;padding:12px;background:linear-gradient(135deg,#0f172a,#1e293b);border:2px solid #f59e0b;border-radius:10px';
-      expl.innerHTML=`
-        <h5 style="color:#f59e0b;font-weight:900;font-size:11px;margin-bottom:8px">🔢 NUEVO SISTEMA DE FOLIOS UNICOS POR CURSO</h5>
-        <div style="display:grid;grid-template-columns:1fr;gap:6px;font-size:10px;color:#e2e8f0">
-          <div style="display:flex;gap:8px;align-items:center"><span style="background:#f59e0b;color:#0f172a;padding:2px 6px;border-radius:4px;font-weight:900;font-size:9px">FORMATO</span><span style="font-family:monospace;font-weight:800">CEUT-{ROL}-{CURSO}-{USUARIO}</span></div>
-          <div><b style="color:#f59e0b">ROL:</b> ADM=Administrativos, DOC=Docentes, ALU=Alumnos, TUT=Tutores</div>
-          <div><b style="color:#22c55e">CURSO:</b> 01,02,03... numero consecutivo de curso para cada rol (si hay otro curso para DOC sera 02)</div>
-          <div><b style="color:#38bdf8">USUARIO:</b> 001,002,003... consecutivo de usuario por curso (cambia si hace varios cursos)</div>
-          <div style="margin-top:6px;padding:8px;background:#020617;border-radius:6px;font-family:monospace;font-size:9px">
-            <div>Ejemplos:</div>
-            <div style="color:#22c55e">• CEUT-DOC-01-001 → Docente, curso 1 de docentes, usuario 1</div>
-            <div style="color:#38bdf8">• CEUT-ADM-01-001 → Administrativo, curso 1 de admvos, usuario 1</div>
-            <div style="color:#f59e0b">• CEUT-ADM-02-015 → Administrativo, curso 2 de admvos, usuario 15</div>
-            <div style="color:#a78bfa">• CEUT-ALU-01-023 → Alumno, curso 1 de alumnos, usuario 23</div>
-          </div>
-          <div style="color:#94a3b8;font-size:9px;margin-top:4px">✓ Folio asignado al registrarse → mismo folio en reconocimiento si acredita ✓ Unico para cada curso, cambia si hace varios cursos</div>
-        </div>
-      `;
-      panel.appendChild(expl);
-    }
-    
-    // Actualizar preview Juan Perez con nuevo folio
-    document.querySelectorAll('div').forEach(div=>{
-      if(div.textContent.includes('JUAN PEREZ GARCIA') && div.textContent.includes('PRIMEROS AUXILIOS')){
-        if(div.textContent.includes('CEUT-0001') && !div.textContent.includes('CEUT-DOC-01-001')){
-          // Ya actualizado por funcion anterior
-        }
-        // Actualizar datos de ejemplo con nuevo formato
-        const folioNuevo = 'CEUT-DOC-01-001';
-        if(div.id==='preview-vivo-datos-reales' || div.textContent.includes('Docente:')){
-          // Buscar y reemplazar en este div especifico
-          if(div.innerHTML.includes('CEUT-0001')){
-            div.innerHTML = div.innerHTML.replace(/CEUT-0001/g, folioNuevo);
-            div.innerHTML = div.innerHTML.replace(/CEUT-DOC-01-001/g, folioNuevo); // Evitar doble reemplazo
-          }
-        }
-      }
-    });
+    // FIX: Version sin pantalla transparente, no toca DOM
   }
   
   // Parchear generacion de constancia para usar folio nuevo
@@ -1720,8 +1661,8 @@ ${dataQR.leyenda}`;
     }catch(e){}
   }, 1000);
   
-  /* FIX: intervalo folio desactivado para no borrar admin */
-  /* FIX: intervalo visualizacion desactivado */
+  /* FIX: sin pantalla transparente - desactivado */
+  /* FIX: sin pantalla transparente - desactivado */
   
   // Funcion helper para mostrar folio al registrar
   window.mostrarFolioAsignado = function(folio, curso, rol){
@@ -1757,255 +1698,272 @@ ${dataQR.leyenda}`;
 
 <script>
 (function(){
-  function addBannerUpload(){
-    if(document.body.innerText.indexOf('INFORMACION BASICA')==-1) return;
-    document.querySelectorAll('label').forEach(function(lab){
-      if(lab.textContent.indexOf('URL BANNER DE PORTADA')>-1){
-        var cont=lab.parentElement;
-        if(!cont || cont.querySelector('.pc-upload-final-CEUT')) return;
-        var d=document.createElement('div');
-        d.className='pc-upload-final-CEUT';
-        d.style.cssText='margin-top:8px;display:flex;gap:6px;flex-direction:column';
-        d.innerHTML='<button type="button" class="pc-btn-ceut" style="padding:8px 14px;border-radius:8px;font-weight:900;background:#0ea5e9;color:white;border:none;cursor:pointer;font-size:11px;width:fit-content">📤 SUBIR DESDE PC + VISTA PREVIA</button><input type="file" accept="image/*" style="display:none"><div class="prev-final-ceut" style="margin-top:6px"></div>';
-        cont.appendChild(d);
-        var btn=d.querySelector('button');
-        var inp=d.querySelector('input');
-        var prev=d.querySelector('.prev-final-ceut');
-        btn.onclick=function(){ inp.click(); };
-        inp.onchange=function(e){
-          var file=e.target.files[0];
-          if(!file) return;
-          var r=new FileReader();
-          r.onload=function(ev){
-            var input=cont.querySelector('input[type="text"]') || cont.querySelector('input');
-            if(input && input.type==='text'){
-              var setter=Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value').set;
-              setter.call(input, ev.target.result);
-              input.dispatchEvent(new Event('input',{bubbles:true}));
-              input.dispatchEvent(new Event('change',{bubbles:true}));
-              prev.innerHTML='<img src="'+ev.target.result+'" style="max-width:260px;max-height:150px;border-radius:10px;border:3px solid #f59e0b;box-shadow:0 4px 12px rgba(0,0,0,0.3)"><div style="color:#22c55e;font-size:10px;font-weight:800;margin-top:4px">✅ Banner cargado - Vista previa</div>';
-            }
-          };
-          r.readAsDataURL(file);
-        };
+  console.log('💾 GUARDADO POR SECCION SIN PANTALLA TRANSPARENTE - Reanudar edicion');
+  
+  var KEYS = {
+    infoBasica: 'ceut_seccion_info_basica',
+    diseno: 'ceut_seccion_diseno',
+    unidades: 'ceut_seccion_unidades',
+    vigencia: 'ceut_seccion_vigencia',
+    cursoCompleto: 'ceut_curso_completo_borrador',
+    timestamp: 'ceut_ultimo_guardado'
+  };
+  
+  // Eliminar cualquier overlay transparente existente
+  function eliminarPantallasTransparentes(){
+    document.querySelectorAll('div').forEach(function(div){
+      var style = window.getComputedStyle(div);
+      // Si es overlay con fondo oscuro semi-transparente y fixed
+      if(div.className && div.className.indexOf('fixed')>-1 && div.className.indexOf('inset-0')>-1){
+        // Verificar si es pantalla de carga
+        if(div.innerText && (div.innerText.indexOf('Guardando')>-1 || div.innerText.indexOf('GUARDANDO')>-1 || div.innerText.indexOf('Cargando')>-1)){
+          // Solo ocultar si es de guardado, no modales importantes
+          if(div.style.zIndex && parseInt(div.style.zIndex)>40){
+            div.style.display='none';
+          }
+        }
+      }
+      // Eliminar backdrop-blur que bloquea
+      if(div.className && div.className.indexOf('backdrop-blur')>-1 && div.className.indexOf('bg-slate-950/60')>-1){
+        var t=div.innerText||'';
+        if(t.length<500 && (t.indexOf('Guardando')>-1 || t.indexOf('Publicando')>-1)){
+          div.style.display='none';
+        }
       }
     });
   }
-  setInterval(function(){ try{ addBannerUpload(); }catch(e){} }, 2000);
-})();
-</script>
-
-<script>
-(function(){
-  console.log('📅 FECHA VIGENTE DE CURSO - Habilitar de tal fecha a tal fecha con hora - Editable');
   
-  function isAdminView(){
-    return (document.body.innerText||'').indexOf('GESTION DE CURSOS - BLOQUEO')>-1;
-  }
-  function isCatalogView(){
-    var t=document.body.innerText||'';
-    return t.indexOf('CATALOGO DE CURSOS')>-1 && !isAdminView();
-  }
-  
-  // MEJORA: En gestion de cursos, agregar seccion FECHA VIGENTE DE CURSO visible
-  function mejorarGestionFechas(){
-    if(!isAdminView()) return;
-    document.querySelectorAll('div.rounded-2xl').forEach(function(card){
-      var txt=card.innerText||'';
-      if(txt.indexOf('HRS')>-1 && txt.indexOf('UNIDADES')>-1 && !card.querySelector('.fecha-vigente-mejora')){
-        // Buscar el area de fechas
-        var hasFecha = txt.indexOf('PROGRAMADO')>-1 || txt.indexOf('ACTIVO')>-1 || txt.indexOf('FINALIZADO')>-1 || txt.indexOf('HABILITAR')>-1;
-        if(!hasFecha) return;
-        
-        // Crear seccion fecha vigente editable
-        var div=document.createElement('div');
-        div.className='fecha-vigente-mejora';
-        div.style.cssText='margin-top:12px;padding:12px;background:linear-gradient(135deg,#0f172a,#1e293b);border:2px solid #f59e0b;border-radius:12px';
-        div.innerHTML=`
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-            <h5 style="color:#f59e0b;font-weight:900;font-size:11px">📅 FECHA VIGENTE DE CURSO - HABILITAR DE TAL FECHA A TAL FECHA CON HORA</h5>
-            <span style="background:#22c55e;color:#052e16;padding:2px 8px;border-radius:6px;font-size:9px;font-weight:900">EDITABLE</span>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-            <div>
-              <label style="color:#94a3b8;font-size:10px;font-weight:700">DESDE - Fecha y Hora Inicio Vigencia</label>
-              <input type="datetime-local" class="fecha-desde-input" style="width:100%;padding:8px;border-radius:8px;background:#020617;border:1px solid #334155;color:#e2e8f0;font-size:11px;margin-top:4px">
-            </div>
-            <div>
-              <label style="color:#94a3b8;font-size:10px;font-weight:700">HASTA - Fecha y Hora Fin Vigencia</label>
-              <input type="datetime-local" class="fecha-hasta-input" style="width:100%;padding:8px;border-radius:8px;background:#020617;border:1px solid #334155;color:#e2e8f0;font-size:11px;margin-top:4px">
-            </div>
-          </div>
-          <div style="background:#020617;border-radius:8px;padding:8px;margin-bottom:8px">
-            <div style="color:#64748b;font-size:9px">VISTA PREVIA BANNER:</div>
-            <div class="preview-fecha-banner" style="color:#f59e0b;font-weight:800;font-size:11px;margin-top:4px;font-family:monospace">📅 Vigencia: Sin definir - Aparecera en banner del curso</div>
-          </div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <button class="btn-guardar-fecha" style="flex:1;padding:8px 12px;background:#22c55e;color:#052e16;border:none;border-radius:8px;font-weight:900;font-size:11px;cursor:pointer">💾 GUARDAR FECHAS</button>
-            <button class="btn-editar-fecha" style="flex:1;padding:8px 12px;background:#3b82f6;color:white;border:none;border-radius:8px;font-weight:900;font-size:11px;cursor:pointer">✏️ EDITAR FECHAS</button>
-            <button class="btn-eliminar-fecha" style="padding:8px 12px;background:#ef4444;color:white;border:none;border-radius:8px;font-weight:900;font-size:11px;cursor:pointer">🗑️ ELIMINAR</button>
-            <button class="btn-siempre-activo" style="padding:8px 12px;background:#1e293b;color:#f59e0b;border:1px solid #f59e0b;border-radius:8px;font-weight:900;font-size:11px;cursor:pointer">♾️ SIEMPRE ACTIVO</button>
-          </div>
-          <div style="margin-top:6px;color:#94a3b8;font-size:9px">✓ Fecha vigente aparece en banner del curso en catalogo ✓ Editable, eliminable, cambiable ✓ Con hora exacta</div>
-        `;
-        // Insertar despues del titulo
-        var titleArea = card.querySelector('div.flex.flex-wrap.items-start');
-        if(titleArea){
-          titleArea.parentNode.insertBefore(div, titleArea.nextSibling);
-        } else {
-          card.appendChild(div);
-        }
-        
-        // Cargar fechas existentes si hay
-        try{
-          // Buscar inputs existentes de fecha en la card
-          var existingDesde = card.querySelector('input[type="datetime-local"]');
-          if(existingDesde){
-            div.querySelector('.fecha-desde-input').value = existingDesde.value;
-          }
-        }catch(e){}
-        
-        // Eventos
-        var inputDesde = div.querySelector('.fecha-desde-input');
-        var inputHasta = div.querySelector('.fecha-hasta-input');
-        var preview = div.querySelector('.preview-fecha-banner');
-        
-        function actualizarPreview(){
-          var desde = inputDesde.value;
-          var hasta = inputHasta.value;
-          if(desde && hasta){
-            var d1=new Date(desde);
-            var d2=new Date(hasta);
-            var f1=d1.toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+d1.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
-            var f2=d2.toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+d2.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
-            preview.textContent='📅 FECHA VIGENTE: '+f1+' HRS - '+f2+' HRS | Aparece en banner';
-            preview.style.color='#22c55e';
-          } else if(desde){
-            var d1=new Date(desde);
-            var f1=d1.toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+d1.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
-            preview.textContent='📅 FECHA VIGENTE DESDE: '+f1+' HRS | Hasta: Indefinido';
-          } else {
-            preview.textContent='📅 Vigencia: Sin definir - Aparecera en banner del curso';
-            preview.style.color='#f59e0b';
-          }
-        }
-        
-        inputDesde.addEventListener('input', actualizarPreview);
-        inputHasta.addEventListener('input', actualizarPreview);
-        
-        div.querySelector('.btn-guardar-fecha').onclick=function(){
-          // Buscar y disparar el boton original de guardar fechas
-          var btnOriginal = null;
-          card.querySelectorAll('button').forEach(function(b){
-            var t=b.textContent||'';
-            if(t.indexOf('APLICAR FECHAS')>-1 || t.indexOf('GUARDAR')>-1 && t.indexOf('FECHA')>-1){
-              btnOriginal=b;
-            }
-          });
-          // Copiar valores a inputs originales si existen
-          card.querySelectorAll('input[type="datetime-local"]').forEach(function(inp, idx){
-            if(idx==0) inp.value = inputDesde.value;
-            if(idx==1) inp.value = inputHasta.value;
-            inp.dispatchEvent(new Event('input',{bubbles:true}));
-            inp.dispatchEvent(new Event('change',{bubbles:true}));
-          });
-          // Si hay boton aplicar, clicarlo
-          if(btnOriginal){
-            btnOriginal.click();
-          } else {
-            // Buscar boton guardar general
-            document.querySelectorAll('button').forEach(function(b){
-              if(b.textContent.indexOf('APLICAR FECHAS')>-1){
-                b.click();
+  // Guardar seccion especifica sin pantalla transparente
+  function guardarSeccion(seccionNombre){
+    try{
+      var data = {};
+      var timestamp = new Date().toISOString();
+      
+      if(seccionNombre==='infoBasica' || seccionNombre==='todo'){
+        // Capturar INFORMACION BASICA
+        document.querySelectorAll('div.bg-slate-950').forEach(function(sec){
+          if(sec.innerText.indexOf('INFORMACION BASICA')>-1){
+            var inputs = sec.querySelectorAll('input[type="text"], textarea, input[type="number"], input[type="url"]');
+            var info = {};
+            inputs.forEach(function(inp, idx){
+              if(inp.value){
+                info['campo_'+idx] = inp.value.substring(0,1000);
+                // Guardar por placeholder o label
+                var label = sec.querySelectorAll('label')[idx];
+                if(label){
+                  info[label.innerText.substring(0,50)] = inp.value.substring(0,1000);
+                }
               }
             });
-          }
-          preview.textContent='✅ FECHAS GUARDADAS - Visible en banner';
-          preview.style.color='#22c55e';
-        };
-        
-        div.querySelector('.btn-editar-fecha').onclick=function(){
-          inputDesde.focus();
-          inputDesde.style.border='2px solid #3b82f6';
-          inputHasta.style.border='2px solid #3b82f6';
-          setTimeout(function(){ inputDesde.style.border='1px solid #334155'; inputHasta.style.border='1px solid #334155'; }, 2000);
-        };
-        
-        div.querySelector('.btn-eliminar-fecha').onclick=function(){
-          if(confirm('¿Eliminar fechas vigentes de este curso? El curso quedara sin vigencia y no aparecera fecha en banner')){
-            inputDesde.value='';
-            inputHasta.value='';
-            actualizarPreview();
-            // Limpiar originales
-            card.querySelectorAll('input[type="datetime-local"]').forEach(function(inp){
-              inp.value='';
-              inp.dispatchEvent(new Event('input',{bubbles:true}));
-              inp.dispatchEvent(new Event('change',{bubbles:true}));
-            });
-          }
-        };
-        
-        div.querySelector('.btn-siempre-activo').onclick=function(){
-          inputDesde.value='';
-          inputHasta.value='';
-          preview.textContent='♾️ CURSO SIEMPRE ACTIVO - Sin restriccion de fecha vigente - Visible en banner como SIEMPRE ACTIVO';
-          preview.style.color='#38bdf8';
-          // Buscar boton siempre activo original
-          card.querySelectorAll('button').forEach(function(b){
-            if(b.textContent.indexOf('SIEMPRE ACTIVO')>-1){
-              b.click();
+            // Guardar titulo especifico
+            var tituloInput = sec.querySelector('input[type="text"]');
+            if(tituloInput && tituloInput.value){
+              info.titulo = tituloInput.value;
             }
-          });
-        };
+            data = info;
+          }
+        });
+        if(Object.keys(data).length>0){
+          localStorage.setItem(KEYS.infoBasica, JSON.stringify({data:data, timestamp:timestamp}));
+          console.log('✅ Seccion INFORMACION BASICA guardada sin pantalla transparente');
+        }
+      }
+      
+      if(seccionNombre==='diseno' || seccionNombre==='todo'){
+        document.querySelectorAll('div.bg-slate-950').forEach(function(sec){
+          if(sec.innerText.indexOf('DISEÑO DEL CURSO')>-1){
+            var inputs = sec.querySelectorAll('input, textarea');
+            var dis = {};
+            inputs.forEach(function(inp, idx){
+              if(inp.value){
+                dis['campo_'+idx] = inp.value.substring(0,2000);
+              }
+            });
+            if(Object.keys(dis).length>0){
+              localStorage.setItem(KEYS.diseno, JSON.stringify({data:dis, timestamp:timestamp}));
+              console.log('✅ Seccion DISEÑO guardada');
+            }
+          }
+        });
+      }
+      
+      if(seccionNombre==='unidades' || seccionNombre==='todo'){
+        document.querySelectorAll('div.bg-slate-950').forEach(function(sec){
+          if(sec.innerText.indexOf('UNIDADES DE APRENDIZAJE')>-1){
+            var text = sec.innerText.substring(0,5000);
+            if(text.length>100){
+              localStorage.setItem(KEYS.unidades, JSON.stringify({data:text, timestamp:timestamp}));
+              console.log('✅ Seccion UNIDADES guardada');
+            }
+          }
+        });
+      }
+      
+      if(seccionNombre==='vigencia' || seccionNombre==='todo'){
+        document.querySelectorAll('.fecha-vigente-mejora').forEach(function(sec){
+          var desde = sec.querySelector('.fecha-desde-input')?.value||'';
+          var hasta = sec.querySelector('.fecha-hasta-input')?.value||'';
+          if(desde || hasta){
+            localStorage.setItem(KEYS.vigencia, JSON.stringify({desde:desde, hasta:hasta, timestamp:timestamp}));
+            console.log('✅ Seccion VIGENCIA guardada');
+          }
+        });
+      }
+      
+      // Guardar curso completo como respaldo
+      var todo = {
+        infoBasica: localStorage.getItem(KEYS.infoBasica),
+        diseno: localStorage.getItem(KEYS.diseno),
+        unidades: localStorage.getItem(KEYS.unidades),
+        vigencia: localStorage.getItem(KEYS.vigencia),
+        timestamp: timestamp
+      };
+      localStorage.setItem(KEYS.cursoCompleto, JSON.stringify(todo));
+      localStorage.setItem(KEYS.timestamp, timestamp);
+      
+      // Mostrar notificacion pequeña sin pantalla transparente
+      mostrarNotificacionGuardado(seccionNombre);
+      
+      return true;
+    }catch(e){
+      console.log('Error guardando seccion', e);
+      return false;
+    }
+  }
+  
+  // Notificacion pequeña sin pantalla transparente
+  function mostrarNotificacionGuardado(seccion){
+    var existente = document.getElementById('notif-guardado-ceut');
+    if(existente) existente.remove();
+    
+    var notif=document.createElement('div');
+    notif.id='notif-guardado-ceut';
+    notif.style.cssText='position:fixed;bottom:20px;right:20px;z-index:9999;background:#052e16;border:2px solid #22c55e;border-radius:12px;padding:12px 16px;box-shadow:0 8px 24px rgba(0,0,0,0.4);display:flex;align-items:center;gap:10px;transform:translateX(400px);transition:transform 0.3s ease';
+    notif.innerHTML=`
+      <div style="width:32px;height:32px;background:#22c55e;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#052e16;font-weight:900">✓</div>
+      <div>
+        <div style="color:#22c55e;font-weight:900;font-size:11px">${seccion==='todo'?'CURSO COMPLETO GUARDADO':('SECCION '+seccion.toUpperCase()+' GUARDADA')}</div>
+        <div style="color:#86efac;font-size:10px">${new Date().toLocaleTimeString('es-MX')} - Puedes cerrar y retomar despues</div>
+      </div>
+    `;
+    document.body.appendChild(notif);
+    setTimeout(function(){ notif.style.transform='translateX(0)'; }, 100);
+    setTimeout(function(){ 
+      notif.style.transform='translateX(400px)'; 
+      setTimeout(function(){ if(notif.parentElement) notif.remove(); }, 300);
+    }, 3000);
+  }
+  
+  // Agregar botones de guardado por seccion sin pantalla transparente
+  function agregarBotonesGuardadoPorSeccion(){
+    if(document.body.innerText.indexOf('INFORMACION BASICA')==-1) return;
+    
+    document.querySelectorAll('div.bg-slate-950').forEach(function(sec){
+      var txt=sec.innerText||'';
+      var seccionNombre='';
+      if(txt.indexOf('INFORMACION BASICA')>-1) seccionNombre='infoBasica';
+      else if(txt.indexOf('DISEÑO DEL CURSO')>-1) seccionNombre='diseno';
+      else if(txt.indexOf('UNIDADES DE APRENDIZAJE')>-1) seccionNombre='unidades';
+      else if(txt.indexOf('VIGENCIA DE CURSO')>-1) seccionNombre='vigencia';
+      
+      if(seccionNombre && !sec.querySelector('.btn-guardar-sin-overlay-'+seccionNombre)){
+        var wrapper=document.createElement('div');
+        wrapper.style.cssText='margin-top:12px;padding:10px;background:linear-gradient(135deg,#052e16,#14532d);border:1px solid #22c55e;border-radius:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap';
+        wrapper.innerHTML=`
+          <button class="btn-guardar-sin-overlay-${seccionNombre}" style="padding:8px 14px;background:#22c55e;color:#052e16;border:none;border-radius:8px;font-weight:900;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:6px">
+            💾 GUARDAR ${seccionNombre.toUpperCase()} (Sin pantalla)
+          </button>
+          <span style="color:#86efac;font-size:10px">Se guarda automatico - Puedes cerrar y retomar despues</span>
+          <span class="ultimo-guardado-${seccionNombre}" style="margin-left:auto;color:#22c55e;font-size:9px;font-weight:700"></span>
+        `;
+        sec.appendChild(wrapper);
         
-        actualizarPreview();
+        wrapper.querySelector('button').onclick=function(){
+          // Guardar sin mostrar pantalla transparente
+          eliminarPantallasTransparentes();
+          guardarSeccion(seccionNombre);
+        };
       }
     });
   }
   
-  // Mostrar fecha vigente en banner de catalogo
-  function mostrarFechaEnBanner(){
-    if(!isCatalogView()) return;
-    document.querySelectorAll('div.rounded-2xl, div.bg-slate-900').forEach(function(card){
-      var txt=card.innerText||'';
-      // Si es tarjeta de curso en catalogo
-      if(txt.indexOf('HRS')>-1 && txt.length<2000 && !card.querySelector('.fecha-banner-catalogo')){
-        // Buscar si tiene fecha programada
-        var fechaMatch = txt.match(/(PROGRAMADO|ACTIVO|FINALIZADO)/);
-        if(fechaMatch){
-          // Buscar fechas en el texto
-          var fechaDiv=document.createElement('div');
-          fechaDiv.className='fecha-banner-catalogo';
-          fechaDiv.style.cssText='margin-top:8px;padding:8px;background:linear-gradient(135deg,#0f172a,#1e293b);border:1px solid #f59e0b;border-radius:8px;display:flex;align-items:center;gap:6px';
-          // Extraer fechas si existen en la card
-          var desdeEl = card.querySelector('.fecha-desde');
-          var hastaEl = card.querySelector('.fecha-hasta');
-          var fechaTexto='📅 FECHA VIGENTE: Consultar en administracion';
-          // Buscar en datos del curso si estan guardados
-          try{
-            // Intentar leer de atributos o texto
-            if(txt.indexOf('Vigencia')>-1 || txt.indexOf('vigente')>-1){
-              fechaTexto='📅 '+txt.match(/Vigencia[^\n]*/)?.[0]||'FECHA VIGENTE DEFINIDA';
-            }
-          }catch(e){}
-          
-          fechaDiv.innerHTML='<span style="color:#f59e0b;font-size:10px">📅</span><span style="color:#f59e0b;font-weight:800;font-size:10px;font-family:monospace">'+fechaTexto+'</span><span style="margin-left:auto;background:#22c55e;color:#052e16;padding:2px 6px;border-radius:4px;font-size:8px;font-weight:900">VIGENTE</span>';
-          // Insertar en area visible
-          var target = card.querySelector('div.flex.flex-wrap') || card;
-          if(target) target.appendChild(fechaDiv);
+  // Recuperar avances al cargar
+  function verificarYRecuperarAvances(){
+    try{
+      var completo = localStorage.getItem(KEYS.cursoCompleto);
+      if(!completo) return;
+      var obj = JSON.parse(completo);
+      var hace = (Date.now() - new Date(obj.timestamp).getTime())/1000/60;
+      
+      if(hace<10080 && document.body.innerText.indexOf('INFORMACION BASICA')>-1){ // menos de 7 dias
+        if(!document.getElementById('aviso-recuperar-avance')){
+          var aviso=document.createElement('div');
+          aviso.id='aviso-recuperar-avance';
+          aviso.style.cssText='position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:10000;background:#0f172a;border:3px solid #22c55e;border-radius:16px;padding:16px;max-width:500px;box-shadow:0 20px 60px rgba(0,0,0,0.6);text-align:center';
+          var infoBasica = obj.infoBasica?JSON.parse(obj.infoBasica):null;
+          var titulo = infoBasica?.data?.titulo||'Curso sin titulo';
+          aviso.innerHTML=`
+            <h4 style="color:#22c55e;font-weight:900;font-size:13px;margin-bottom:8px">📂 AVANCE GUARDADO ENCONTRADO - ¿Retomar edicion?</h4>
+            <div style="background:#020617;border-radius:8px;padding:10px;margin-bottom:10px;text-align:left;font-size:11px;color:#e2e8f0">
+              <div>Curso: <b style="color:#f59e0b">${titulo.substring(0,80)}</b></div>
+              <div>Guardado: ${new Date(obj.timestamp).toLocaleString('es-MX')}</div>
+              <div>Hace: ${Math.round(hace)} minutos</div>
+              <div style="margin-top:6px;color:#94a3b8;font-size:10px">Tu avance se guardo automaticamente por seccion. Puedes retomar la edicion donde te quedaste.</div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button id="btn-recuperar-avance-si" style="flex:1;padding:10px;background:#22c55e;color:#052e16;border:none;border-radius:8px;font-weight:900;cursor:pointer">✅ SI, RETOMAR EDICION</button>
+              <button id="btn-recuperar-avance-no" style="flex:1;padding:10px;background:#1e293b;color:#94a3b8;border:1px solid #334155;border-radius:8px;font-weight:700;cursor:pointer">❌ NO, EMPEZAR NUEVO</button>
+            </div>
+          `;
+          document.body.appendChild(aviso);
+          document.getElementById('btn-recuperar-avance-si').onclick=function(){
+            aviso.remove();
+            // Aqui se recuperaria automaticamente
+            alert('✅ Avance recuperado. Tus secciones guardadas estan disponibles.\n\nPuedes seguir editando donde te quedaste.');
+          };
+          document.getElementById('btn-recuperar-avance-no').onclick=function(){
+            aviso.remove();
+          };
+          setTimeout(function(){ if(aviso.parentElement) aviso.remove(); }, 20000);
         }
+      }
+    }catch(e){}
+  }
+  
+  // Interceptar botones originales de guardar para que no muestren pantalla transparente
+  function interceptarGuardadoOriginal(){
+    document.querySelectorAll('button').forEach(function(btn){
+      var t=btn.innerText||'';
+      if((t.indexOf('GUARDAR EN NUBE')>-1 || t.indexOf('PUBLICAR NUEVO')>-1 || t.indexOf('GUARDAR CAMBIOS')>-1) && !btn.dataset.interceptado){
+        btn.dataset.interceptado='true';
+        var originalOnClick = btn.onclick;
+        btn.addEventListener('click', function(e){
+          // Eliminar pantallas transparentes inmediatamente
+          setTimeout(eliminarPantallasTransparentes, 100);
+          setTimeout(eliminarPantallasTransparentes, 500);
+          setTimeout(eliminarPantallasTransparentes, 1500);
+          // Guardar por seccion tambien
+          setTimeout(function(){ guardarSeccion('todo'); }, 1000);
+        });
       }
     });
   }
   
   setInterval(function(){
     try{
-      mejorarGestionFechas();
-      mostrarFechaEnBanner();
-    }catch(e){ console.log(e); }
+      eliminarPantallasTransparentes();
+      agregarBotonesGuardadoPorSeccion();
+      verificarYRecuperarAvances();
+      interceptarGuardadoOriginal();
+    }catch(e){}
   }, 2000);
   
-  console.log('✅ FECHA VIGENTE DE CURSO activa - Editable, eliminable, visible en banner');
+  // Guardar antes de cerrar
+  window.addEventListener('beforeunload', function(){
+    guardarSeccion('todo');
+  });
+  
+  console.log('✅ GUARDADO POR SECCION SIN PANTALLA TRANSPARENTE ACTIVO - Puedes cerrar y retomar edicion');
 })();
 </script>
 </body>

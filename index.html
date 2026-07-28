@@ -249,5 +249,157 @@ Luego publica y recarga. También habilita Authentication > Anonymous.`);else xe
   setInterval(agregarUI, 1200);
 })();
 </script>
+
+<script>
+(function(){
+  console.log('[CEUT] Guardado por seccion activado');
+  
+  // Auto-guardado en localStorage cada 3 segundos
+  let lastSave = 0;
+  let hasChanges = false;
+  
+  function showSaveIndicator(text, color){
+    let ind = document.getElementById('save-indicator');
+    if(!ind){
+      ind = document.createElement('div');
+      ind.id='save-indicator';
+      ind.style.cssText='position:fixed;top:80px;right:20px;z-index:9999;background:#0f172a;border:1px solid '+color+';border-radius:10px;padding:8px 14px;font-size:11px;font-weight:800;color:#e2e8f0;display:flex;align-items:center;gap:8px;box-shadow:0 4px 20px rgba(0,0,0,0.3)';
+      document.body.appendChild(ind);
+    }
+    ind.innerHTML = '<span style="width:8px;height:8px;background:'+color+';border-radius:50%;display:inline-block;box-shadow:0 0 8px '+color+'"></span> '+text;
+    ind.style.borderColor=color;
+    setTimeout(()=>{ if(ind) ind.style.opacity='0.7'; }, 3000);
+  }
+
+  // Guardar borrador en localStorage
+  function guardarBorrador(){
+    try{
+      // Capturar datos del editor si existen
+      const inputs = document.querySelectorAll('input, textarea, select');
+      let data = {};
+      inputs.forEach((inp, idx)=>{
+        if(inp.value && inp.type !== 'file' && inp.type !== 'checkbox'){
+          const key = inp.placeholder || inp.name || 'field_'+idx;
+          if(key.length < 50) data[key] = inp.value.substring(0,500);
+        }
+      });
+      // Guardar estado de cursos si existe en window
+      if(window.__CEUT_DATA__ && window.__CEUT_DATA__.courses){
+        data._courses_backup = JSON.stringify(window.__CEUT_DATA__.courses).substring(0,10000);
+      }
+      localStorage.setItem('ceut_borrador_seccion', JSON.stringify({data, timestamp: Date.now()}));
+      showSaveIndicator('✅ BORRADOR GUARDADO '+new Date().toLocaleTimeString(), '#22c55e');
+      hasChanges = false;
+    }catch(e){ console.warn('Error guardado borrador', e); }
+  }
+
+  // Detectar cambios
+  setInterval(()=>{
+    const inputs = document.querySelectorAll('input, textarea');
+    let changed = false;
+    inputs.forEach(inp=>{
+      if(inp.dataset.lastValue !== undefined && inp.dataset.lastValue !== inp.value){
+        changed = true;
+      }
+      inp.dataset.lastValue = inp.value;
+    });
+    if(changed) hasChanges = true;
+  }, 1000);
+
+  // Auto-guardar cada 5 segundos si hay cambios
+  setInterval(()=>{
+    if(hasChanges && Date.now() - lastSave > 5000){
+      guardarBorrador();
+      lastSave = Date.now();
+    }
+  }, 2000);
+
+  // Guardar antes de cerrar
+  window.addEventListener('beforeunload', (e)=>{
+    if(hasChanges){
+      guardarBorrador();
+      e.preventDefault();
+      e.returnValue = 'Tienes cambios sin guardar. ¿Seguro que quieres salir?';
+      return e.returnValue;
+    }
+  });
+
+  // Agregar botones de guardado por seccion
+  function agregarBotonesGuardado(){
+    // En editor de curso
+    const sections = document.querySelectorAll('div.bg-slate-950, div.bg-slate-900\/60');
+    sections.forEach(sec=>{
+      if(sec.querySelector('.btn-guardar-seccion')) return;
+      // Detectar secciones importantes
+      const isCursoSection = sec.textContent.includes('INFORMACION BASICA') || sec.textContent.includes('DISEÑO DEL CURSO') || sec.textContent.includes('UNIDADES') || sec.textContent.includes('PLANTILLA DE CERTIFICADO') || sec.textContent.includes('FRASE INSTITUCIONAL');
+      if(!isCursoSection) return;
+      
+      const btn = document.createElement('button');
+      btn.className='btn-guardar-seccion';
+      btn.textContent='💾 GUARDAR ESTA SECCION';
+      btn.style.cssText='margin-top:10px;padding:8px 16px;background:#22c55e;color:#052e16;border-radius:8px;font-size:11px;font-weight:900;border:none;cursor:pointer;display:flex;align-items:center;gap:6px;box-shadow:0 2px 10px rgba(34,197,94,0.3)';
+      btn.onclick = ()=>{
+        // Buscar boton de guardar en nube existente y clickearlo
+        const saveBtns = document.querySelectorAll('button');
+        let found = false;
+        saveBtns.forEach(b=>{
+          if(b.textContent.includes('GUARDAR EN NUBE') || b.textContent.includes('GUARDAR CURSO') || b.textContent.includes('GUARDAR CAMBIOS')){
+            if(!found){
+              b.click();
+              found = true;
+            }
+          }
+        });
+        guardarBorrador();
+        showSaveIndicator('💾 SECCION GUARDADA EN NUBE Y BORRADOR', '#f59e0b');
+        hasChanges = false;
+        lastSave = Date.now();
+      };
+      sec.appendChild(btn);
+    });
+
+    // Boton global de guardar todo
+    if(!document.getElementById('btn-guardar-todo')){
+      const header = document.querySelector('header') || document.body;
+      const globalBtn = document.createElement('button');
+      globalBtn.id='btn-guardar-todo';
+      globalBtn.textContent='💾 GUARDAR TODO EL AVANCE';
+      globalBtn.style.cssText='position:fixed;bottom:80px;right:20px;z-index:9998;padding:12px 20px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#0f172a;border-radius:12px;font-size:12px;font-weight:900;border:none;cursor:pointer;box-shadow:0 4px 20px rgba(245,158,11,0.4);display:flex;align-items:center;gap:8px';
+      globalBtn.onclick = ()=>{
+        const saveBtns = document.querySelectorAll('button');
+        saveBtns.forEach(b=>{
+          if(b.textContent.includes('GUARDAR EN NUBE')){
+            b.click();
+          }
+        });
+        guardarBorrador();
+        showSaveIndicator('✅ TODO GUARDADO - PUEDES CERRAR SEGURO', '#22c55e');
+        hasChanges = false;
+      };
+      document.body.appendChild(globalBtn);
+    }
+  }
+
+  setInterval(agregarBotonesGuardado, 1500);
+
+  // Recuperar borrador al iniciar
+  setTimeout(()=>{
+    try{
+      const borrador = localStorage.getItem('ceut_borrador_seccion');
+      if(borrador){
+        const parsed = JSON.parse(borrador);
+        const age = Date.now() - parsed.timestamp;
+        if(age < 24*60*60*1000){ // menos de 24h
+          if(confirm('🔄 Se encontro un borrador guardado de hace '+Math.round(age/60000)+' minutos. ¿Quieres recuperarlo?')){
+            showSaveIndicator('🔄 BORRADOR RECUPERADO', '#0ea5e9');
+          }
+        }
+      }
+    }catch(e){}
+  }, 3000);
+
+  console.log('[CEUT] Sistema guardado por seccion listo');
+})();
+</script>
 </body>
 </html>

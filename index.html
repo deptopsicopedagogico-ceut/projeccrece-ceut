@@ -1720,8 +1720,8 @@ ${dataQR.leyenda}`;
     }catch(e){}
   }, 1000);
   
-  setInterval(interceptarRegistroConFolio, 1000);
-  setInterval(actualizarVisualizacionFolios, 1500);
+  /* FIX: intervalo folio desactivado para no borrar admin */
+  /* FIX: intervalo visualizacion desactivado */
   
   // Funcion helper para mostrar folio al registrar
   window.mostrarFolioAsignado = function(folio, curso, rol){
@@ -1754,5 +1754,45 @@ ${dataQR.leyenda}`;
   letter-spacing: 0.5px;
 }
 </style>
+
+<script>
+(function(){
+  function addBannerUpload(){
+    if(document.body.innerText.indexOf('INFORMACION BASICA')==-1) return;
+    document.querySelectorAll('label').forEach(function(lab){
+      if(lab.textContent.indexOf('URL BANNER DE PORTADA')>-1){
+        var cont=lab.parentElement;
+        if(!cont || cont.querySelector('.pc-upload-final-CEUT')) return;
+        var d=document.createElement('div');
+        d.className='pc-upload-final-CEUT';
+        d.style.cssText='margin-top:8px;display:flex;gap:6px;flex-direction:column';
+        d.innerHTML='<button type="button" class="pc-btn-ceut" style="padding:8px 14px;border-radius:8px;font-weight:900;background:#0ea5e9;color:white;border:none;cursor:pointer;font-size:11px;width:fit-content">📤 SUBIR DESDE PC + VISTA PREVIA</button><input type="file" accept="image/*" style="display:none"><div class="prev-final-ceut" style="margin-top:6px"></div>';
+        cont.appendChild(d);
+        var btn=d.querySelector('button');
+        var inp=d.querySelector('input');
+        var prev=d.querySelector('.prev-final-ceut');
+        btn.onclick=function(){ inp.click(); };
+        inp.onchange=function(e){
+          var file=e.target.files[0];
+          if(!file) return;
+          var r=new FileReader();
+          r.onload=function(ev){
+            var input=cont.querySelector('input[type="text"]') || cont.querySelector('input');
+            if(input && input.type==='text'){
+              var setter=Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value').set;
+              setter.call(input, ev.target.result);
+              input.dispatchEvent(new Event('input',{bubbles:true}));
+              input.dispatchEvent(new Event('change',{bubbles:true}));
+              prev.innerHTML='<img src="'+ev.target.result+'" style="max-width:260px;max-height:150px;border-radius:10px;border:3px solid #f59e0b;box-shadow:0 4px 12px rgba(0,0,0,0.3)"><div style="color:#22c55e;font-size:10px;font-weight:800;margin-top:4px">✅ Banner cargado - Vista previa</div>';
+            }
+          };
+          r.readAsDataURL(file);
+        };
+      }
+    });
+  }
+  setInterval(function(){ try{ addBannerUpload(); }catch(e){} }, 2000);
+})();
+</script>
 </body>
 </html>

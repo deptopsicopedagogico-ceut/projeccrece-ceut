@@ -2878,442 +2878,254 @@ div.absolute.top-full{z-index:999999 !important;position:absolute !important;bac
 </script>
 
 
+
 <script>
+// === FIX V4: RECUADROS 100% FIJOS - SIN SALTO CERO ===
 (function(){
-  console.log('🔄 FOLIO Y FECHA AUTOMÁTICOS POR USUARIO ACTIVOS');
-  
-  // Función para generar folio único por usuario con formato CEUT-ROLNUM-FOLIO
-  window.generarFolioAutomatico = function(usuario, curso){
-    // Formato: CEUT-ALM01-001 o CEUT-DOC03-045 etc
-    const rol = (usuario?.rol || usuario?.role || 'ALM').toUpperCase().substring(0,3);
-    const num = String(usuario?.numeroRol || usuario?.id?.substring(0,2) || '01').padStart(2,'0');
-    const folioNum = String(Math.floor(Math.random()*900)+100).padStart(3,'0');
-    // Formato que pediste: CEUT-ROLNUM-FOLIO
-    return `CEUT-${rol}${num}-${folioNum}`;
-  };
-  
-  // Función para fecha automática - cuando termina último módulo
-  window.generarFechaAutomatica = function(){
-    const fecha = new Date();
-    return fecha.toLocaleDateString('es-MX', {day:'2-digit', month:'long', year:'numeric'});
-  };
-  
-  window.generarFechaFinCurso = function(progreso){
-    // Fecha cuando termina su último módulo o curso
-    const fecha = progreso?.fechaFin || progreso?.completedAt || new Date();
-    const d = new Date(fecha);
-    return d.toLocaleDateString('es-MX', {day:'2-digit', month:'long', year:'numeric'});
-  };
-  
-  // Interceptar render de plantilla para hacer folio y fecha automáticos
-  setInterval(()=>{
-    // Buscar elementos de plantilla en canvas
-    const elementos = window.Ne || [];
-    
-    // Si estamos en editor, asegurar que placeholders sean automáticos
-    const canvasElements = document.querySelectorAll('div[style*="position:absolute"]');
-    canvasElements.forEach(el=>{
-      const texto = el.textContent || '';
-      if(texto.includes('{{FOLIO}}') || texto.includes('FOLIO:')){
-        if(!el.dataset.autoFolio){
-          el.dataset.autoFolio='1';
-          el.style.background='rgba(34,197,94,0.15)';
-          el.style.border='2px solid #22c55e';
-          el.title='FOLIO AUTOMÁTICO - Se genera único por usuario al inscribirse: CEUT-ALM01-001';
-          // Añadir badge
-          if(!el.querySelector('.auto-badge')){
-            const badge=document.createElement('span');
-            badge.className='auto-badge';
-            badge.style.cssText='position:absolute;top:-10px;right:-10px;background:#22c55e;color:#000;font-size:7px;font-weight:900;padding:2px 6px;border-radius:10px;';
-            badge.textContent='AUTO';
-            el.appendChild(badge);
-          }
-        }
+  console.log('🔒 FIX V4 - RECUADROS FIJOS SIN SALTO');
+
+  // 1. CSS anti-salto definitivo
+  const css = document.createElement('style');
+  css.textContent = `
+    div[id^="el-"]{
+      transition: none !important;
+      animation: none !important;
+      will-change: auto !important;
+      transform: translateZ(0) !important;
+      backface-visibility: hidden !important;
+    }
+    div[id^="el-"].is-dragging{
+      z-index: 99999 !important;
+      box-shadow: 0 0 0 3px #f59e0b !important;
+      opacity: 0.85 !important;
+      pointer-events: none !important;
+      transition: none !important;
+    }
+    /* Evitar que el canvas haga reflow */
+    div.relative.bg-white, div[class*="relative"][class*="bg-white"]{
+      transform: translateZ(0);
+    }
+  `;
+  document.head.appendChild(css);
+
+  let drag = null;
+  let canvasCache = null;
+
+  function getCanvas(el){
+    if(canvasCache && document.contains(canvasCache)) return canvasCache;
+    // Buscar canvas padre del elemento
+    let c = el.closest('div.relative.bg-white') || 
+            el.closest('div[class*="relative"][class*="bg-white"]') ||
+            el.parentElement;
+    // Si el padre no es canvas, subir
+    while(c && c !== document.body){
+      const r = c.getBoundingClientRect();
+      if(r.width > 200 && r.height > 100 && getComputedStyle(c).position === 'relative'){
+        canvasCache = c;
+        return c;
       }
-      if(texto.includes('{{FECHA}}') || texto.includes('FECHA')){
-        if(!el.dataset.autoFecha){
-          el.dataset.autoFecha='1';
-          el.style.background='rgba(59,130,246,0.15)';
-          el.style.border='2px solid #3b82f6';
-          el.title='FECHA AUTOMÁTICA - Se genera cuando termina su último módulo/curso';
-          if(!el.querySelector('.auto-badge')){
-            const badge=document.createElement('span');
-            badge.className='auto-badge';
-            badge.style.cssText='position:absolute;top:-10px;right:-10px;background:#3b82f6;color:white;font-size:7px;font-weight:900;padding:2px 6px;border-radius:10px;';
-            badge.textContent='AUTO';
-            el.appendChild(badge);
-          }
-        }
-      }
-    });
-  },1000);
-  
-  // Parchear generación de constancia final para usar datos automáticos reales
-  setInterval(()=>{
-    // Buscar función que genera constancia y asegurar que use folio y fecha automáticos
-    if(window.__CEUT_DATA__?.courses){
-      console.log('✅ Folio y Fecha automáticos: Folio=CEUT-ROL+NUM (único por usuario), Fecha=cuando termina último módulo');
+      c = c.parentElement;
     }
-  },3000);
-  
-  console.log('✅ FOLIO Y FECHA AUTOMÁTICOS: Cada usuario obtiene folio único y fecha de término de último módulo');
-})();
-</script>
-
-
-<style>
-/* TODAS LAS ETIQUETAS POR DELANTE DE PLANTILLA */
-div[class*="relative"] div[style*="position:absolute"]{
-  z-index:50 !important;
-  opacity:1 !important;
-  visibility:visible !important;
-  pointer-events:auto !important;
-}
-/* Fondo de plantilla detrás */
-div[style*="background-image"], img[alt*="plantilla"], img[alt*="fondo"]{
-  z-index:1 !important;
-  pointer-events:none !important;
-}
-/* Canvas contenedor */
-div.w-full.h-full.relative, div[class*="aspect"]{
-  position:relative !important;
-  z-index:2 !important;
-}
-/* Elementos de texto siempre delante */
-div[id^="el-"]{
-  z-index:100 !important;
-  position:absolute !important;
-}
-/* Herramientas de edición por delante */
-div[class*="absolute"][class*="bg-amber"]{
-  z-index:9999 !important;
-}
-/* Todo el editor por delante */
-.bg-slate-900\/80{position:relative;z-index:10;}
-</style>
-<script>
-(function(){
-  setInterval(()=>{
-    const canvas = document.querySelector('div.relative.w-full') || document.querySelector('div[class*="aspect-["]') || document.querySelector('div[style*="background"]')?.parentNode;
-    if(canvas){
-      // Fondo detrás
-      const fondos = canvas.querySelectorAll('img, div[style*="background-image"]');
-      fondos.forEach(f=>{
-        if(f.tagName==='IMG' && f.src.includes('cert')){
-          f.style.zIndex='1';
-          f.style.position='absolute';
-          f.style.top='0';
-          f.style.left='0';
-          f.style.width='100%';
-          f.style.height='100%';
-          f.style.objectFit='contain';
-        }
-      });
-      
-      // Etiquetas delante
-      const etiquetas = canvas.querySelectorAll('div[style*="position:absolute"], div[id^="el-"]');
-      etiquetas.forEach((el,i)=>{
-        el.style.zIndex=100+i;
-        el.style.opacity='1';
-        el.style.visibility='visible';
-        // Borde visible para que se vea
-        if(!el.style.border || el.style.border===''){
-          el.style.border='1px dashed rgba(245,158,11,0.5)';
-        }
-      });
-    }
-    
-    // Menús desplegables por delante de todo
-    document.querySelectorAll('div.absolute.top-full').forEach(dd=>{
-      dd.style.zIndex='9999999';
-    });
-  },500);
-  console.log('✅ TODAS LAS ETIQUETAS POR DELANTE DE PLANTILLA');
-})();
-</script>
-
-
-<script>
-(function(){
-  console.log('🔧 FIX AGREGAR MÁS DE 2 RECUADROS');
-  
-  // Sobrescribir límite si existe
-  const checkInterval = setInterval(()=>{
-    if(typeof window !== 'undefined'){
-      // Buscar variable Ne y quitar límite
-      // Parchear hy directamente si es accesible
-      try{
-        const scripts = document.querySelectorAll('script');
-        // Buscar el botón AGREGAR CAMPO y asegurar que siempre funcione
-        const btns = Array.from(document.querySelectorAll('button')).filter(b=>b.textContent.includes('CAMPO'));
-        btns.forEach(btn=>{
-          if(btn.dataset.fixRecuadros) return;
-          btn.dataset.fixRecuadros='1';
-          btn.addEventListener('click', (e)=>{
-            console.log('Click agregar campo - permitiendo ilimitados');
-            // Forzar que el dropdown se abra aunque ya haya 2
-            setTimeout(()=>{
-              const dropdown = document.querySelector('div.absolute.top-full');
-              if(dropdown){
-                dropdown.style.display='block';
-                dropdown.style.visibility='visible';
-                dropdown.style.opacity='1';
-                dropdown.style.zIndex='9999999';
-              }
-            },50);
-          });
-        });
-      }catch(e){}
-    }
-  },1000);
-  
-  // Parchear la función hy para permitir ilimitados
-  setTimeout(()=>{
-    const originalHy = window.hy;
-    console.log('Hy original:', typeof originalHy);
-    
-    // Si Ne tiene límite, removerlo
-    if(window.Ne && window.Ne.length >=2){
-      console.log('Ne actual:', window.Ne.length);
-    }
-  },2000);
-})();
-</script>
-<style>
-/* Asegurar que se puedan agregar ilimitados recuadros */
-div[id^="el-"]{pointer-events:auto !important;}
-</style>
-
-
-<script>
-(function(){
-  // Fix: permitir agregar ilimitados recuadros sin que se pierdan
-  let intento = 0;
-  const fixHy = setInterval(()=>{
-    intento++;
-    if(intento>50) clearInterval(fixHy);
-    
-    // Buscar el array Ne en React - está en closure, pero podemos interceptar la función que guarda
-    // La solución es forzar que hy siempre use el último Ne del DOM
-    
-    // Detectar si al agregar no aumenta el contador
-    const contador = document.querySelector('span.font-mono');
-    if(contador){
-      const texto = contador.textContent;
-      // Si dice ELEMENTOS: X
-      // Podemos intentar agregar via localStorage o Firebase directo
-    }
-    
-    // Override del botón agregar para forzar múltiples
-    const dropdownBtns = Array.from(document.querySelectorAll('button')).filter(b=>{
-      return b.textContent.trim()==='NOMBRE' || b.textContent.trim()==='TEXTO INSTITUCIONAL' || b.textContent.includes('FECHA -') || b.textContent.includes('FOLIO -') || b.textContent.trim()==='QR';
-    });
-    
-    dropdownBtns.forEach(btn=>{
-      if(btn.dataset.fixedMulti) return;
-      btn.dataset.fixedMulti='1';
-      
-      // Guardar onclick original
-      const originalOnClick = btn.onclick;
-      
-      btn.addEventListener('click', function(e){
-        e.preventDefault();
-        e.stopPropagation();
-        console.log('🟢 Agregando:', btn.textContent);
-        
-        // Forzar pequeño delay entre agregados para evitar colisión de Date.now()
-        setTimeout(()=>{
-          // Clickeamos el original si existe, pero con id único
-          if(originalOnClick){
-            // Generar nuevo evento
-            const newBtn = btn;
-            // El código original de hy usa Date.now() - si se agrega rápido colisiona
-            // Esperamos 100ms
-          }
-        }, 100);
-      });
-    });
-  },500);
-  
-  // Fix real: interceptar localStorage de plantilla y permitir agregar manual
-  window.__AGREGAR_RECUADRO_MANUAL__ = function(tipo){
-    const tipos = {
-      'NOMBRE': '{{NOMBRE}}',
-      'TEXTO INSTITUCIONAL': '{{TEXTO_INSTITUCIONAL}}',
-      'FECHA - Cuando termina su ultimo modulo o curso': '{{FECHA}}',
-      'FOLIO - Formato CEUT-ROLNUM-FOLIO asignado al inscribirse': '{{FOLIO}}',
-      'QR': '{{QR}}'
-    };
-    
-    const nuevoElemento = {
-      id: `el-${Date.now()}-${Math.random().toString(36).substring(2,8)}`,
-      type: tipo.toLowerCase().includes('nombre') ? 'nombrePersona' : 
-            tipo.toLowerCase().includes('texto') ? 'textoInstitucional' :
-            tipo.toLowerCase().includes('fecha') ? 'fechaFin' :
-            tipo.toLowerCase().includes('folio') ? 'folio' : 'qr',
-      x: 10 + Math.random()*60,
-      y: 20 + Math.random()*50,
-      w: tipo==='QR' ? 20 : 60,
-      h: tipo==='QR' ? 25 : 10,
-      text: tipos[tipo] || tipo,
-      fontFamily: 'Inter',
-      fontSize: tipo==='NOMBRE' ? 28 : 14,
-      color: '#0f172a',
-      bold: tipo==='NOMBRE',
-      italic: false,
-      align: 'center',
-      visible: true,
-      opacity: 1,
-      auto: true
-    };
-    
-    // Intentar agregar al estado de React via evento personalizado
-    console.log('Agregando manual:', nuevoElemento);
-    
-    // Disparar evento para que React lo capture
-    window.dispatchEvent(new CustomEvent('agregar-elemento-manual', {detail: nuevoElemento}));
-    
-    return nuevoElemento;
-  };
-  
-  console.log('✅ Fix múltiples recuadros activo');
-})();
-</script>
-
-
-<script>
-// === CEUT FIX: PUBLICAR Y GUARDAR EN NUBE SIN QUE DESAPAREZCA ===
-(function(){
-  console.log('☁️ CEUT CLOUD SAVE v2 - Iniciado');
-  const DB_PATH = { projectId: 'projeccrece-ceut', appId: '687215027724' };
-  
-  // Backup en localStorage siempre
-  function backupLocal(courses){
-    try{
-      localStorage.setItem('CEUT_BACKUP_COURSES_V2', JSON.stringify({ts: Date.now(), courses}));
-      localStorage.setItem('ceut_backup_timestamp', new Date().toISOString());
-      console.log('💾 Backup local guardado:', courses?.length || 'N/A');
-    }catch(e){ console.warn('backup fail',e)}
+    return el.parentElement;
   }
-  
-  // Recuperar backup si Firestore vacio
-  function restoreBackupIfNeeded(){
+
+  // ANULAR DRAG ORIGINAL - Captura en documentElement para ser el primero
+  document.documentElement.addEventListener('mousedown', function(e){
+    const recuadro = e.target.closest('div[id^="el-"]');
+    if(!recuadro) return;
+    
+    // Si es un handle de resize (esquina azul), dejar que funcione resize
+    if(e.target.className && e.target.className.includes('cursor-') && e.target.className.includes('resize')){
+      return; // permitir resize
+    }
+
+    // BLOQUEAR TODO EL SISTEMA ORIGINAL
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+
+    const canvas = getCanvas(recuadro);
+    if(!canvas) return;
+    
+    const canvasRect = canvas.getBoundingClientRect();
+    
+    // LEER POSICION EXACTA ACTUAL - sin redondeo
+    const style = window.getComputedStyle(recuadro);
+    // Preferir style.left inline, si no, calcular desde bounding
+    let curX = parseFloat(recuadro.style.left);
+    let curY = parseFloat(recuadro.style.top);
+    
+    // Si no tiene inline (primer render), calcular
+    if(isNaN(curX)){
+      const elRect = recuadro.getBoundingClientRect();
+      curX = ((elRect.left - canvasRect.left) / canvasRect.width) * 100;
+      curY = ((elRect.top - canvasRect.top) / canvasRect.height) * 100;
+    }
+
+    drag = {
+      el: recuadro,
+      id: recuadro.id,
+      canvas: canvas,
+      canvasRect: canvasRect,
+      startClientX: e.clientX,
+      startClientY: e.clientY,
+      startX: curX,
+      startY: curY,
+      widthPercent: parseFloat(recuadro.style.width) || 20,
+      heightPercent: parseFloat(recuadro.style.height) || 10
+    };
+
+    recuadro.classList.add('is-dragging');
+    document.body.style.cursor = 'grabbing';
+    document.body.style.userSelect = 'none';
+    
+    // Crear ghost para evitar que React re-renderice y cause salto
+    recuadro.style.transition = 'none';
+    
+    console.log('🔒 FIX V4 START', recuadro.id, 'en', curX.toFixed(2)+'%, '+curY.toFixed(2)+'%');
+
+  }, true); // capture = true, lo mas arriba posible
+
+  document.documentElement.addEventListener('mousemove', function(e){
+    if(!drag) return;
+    
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+
+    const {el, canvasRect, startClientX, startClientY, startX, startY, widthPercent, heightPercent} = drag;
+    
+    // Delta en porcentaje - calculo directo sin intermediarios
+    const deltaX = ((e.clientX - startClientX) / canvasRect.width) * 100;
+    const deltaY = ((e.clientY - startClientY) / canvasRect.height) * 100;
+    
+    let newX = startX + deltaX;
+    let newY = startY + deltaY;
+    
+    // Clamp exacto - no dejar salir
+    newX = Math.max(0, Math.min(100 - widthPercent, newX));
+    newY = Math.max(0, Math.min(100 - heightPercent, newY));
+    
+    // APLICAR SIN REDONDEO - directo al DOM para 0 salto visual
+    el.style.left = newX + '%';
+    el.style.top = newY + '%';
+    // Forzar que no haya transform
+    el.style.transform = 'translateZ(0)';
+    
+  }, true);
+
+  document.documentElement.addEventListener('mouseup', function(e){
+    if(!drag) return;
+    
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+
+    const {el, id, canvas} = drag;
+    const finalX = parseFloat(el.style.left);
+    const finalY = parseFloat(el.style.top);
+    
+    el.classList.remove('is-dragging');
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+    
+    console.log('✅ FIX V4 END', id, 'fijado en', finalX.toFixed(3)+'%, '+finalY.toFixed(3)+'%');
+    
+    // ACTUALIZAR ESTADO DE REACT MANUALMENTE - sin trigger de salto
+    // Metodo 1: buscar el array Ne en React y actualizar
     try{
-      const raw = localStorage.getItem('CEUT_BACKUP_COURSES_V2');
-      if(!raw) return;
-      const {courses} = JSON.parse(raw);
-      if(!courses || courses.length===0) return;
-      if(window.__CEUT_DATA__ && (!window.__CEUT_DATA__.courses || window.__CEUT_DATA__.courses.length===0)){
-        console.log('♻️ Restaurando desde backup local:', courses.length);
-        window.__CEUT_DATA__.courses = courses;
-        window.dispatchEvent(new CustomEvent('ceut-restore-backup', {detail: courses}));
+      // Disparar evento que tu codigo original escucha para actualizar posicion
+      // Usamos el mismo formato que Se(c, {x,y}) usa internamente
+      
+      // Intentar encontrar y actualizar en window.__CEUT_DATA__
+      if(window.__CEUT_DATA__){
+        // Buscar en todas las posibles ubicaciones
+        const locations = [
+          window.__CEUT_DATA__.certificateTemplate?.elements,
+          window.__CEUT_DATA__.coords,
+          window.__CEUT_DATA__.elements
+        ];
+        locations.forEach(arr=>{
+          if(Array.isArray(arr)){
+            const found = arr.find(item=>item.id===id);
+            if(found){
+              found.x = Math.round(finalX * 100) / 100; // 2 decimales exactos
+              found.y = Math.round(finalY * 100) / 100;
+              console.log('📝 Actualizado en CEUT_DATA:', found);
+            }
+          }
+        });
       }
+      
+      // Metodo 2: Actualizar via localStorage para persistencia
+      const backup = localStorage.getItem('CEUT_BACKUP_POS_V4');
+      let posMap = backup ? JSON.parse(backup) : {};
+      posMap[id] = {x: finalX, y: finalY, ts: Date.now()};
+      localStorage.setItem('CEUT_BACKUP_POS_V4', JSON.stringify(posMap));
+      
+      // Metodo 3: Forzar evento para que React no revierta la posicion
+      // Esperamos 50ms y re-aplicamos la posicion final (por si React intenta revertir)
+      setTimeout(()=>{
+        if(el && document.contains(el)){
+          el.style.left = finalX + '%';
+          el.style.top = finalY + '%';
+          el.style.transform = 'translateZ(0)';
+        }
+      }, 50);
+      setTimeout(()=>{
+        if(el && document.contains(el)){
+          el.style.left = finalX + '%';
+          el.style.top = finalY + '%';
+        }
+      }, 200);
+      
+    }catch(err){ console.warn('Error actualizando estado:', err); }
+    
+    // Feedback visual
+    const badge = document.createElement('div');
+    badge.style.cssText='position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#22c55e;color:#052e16;padding:10px 20px;border-radius:30px;font-size:12px;font-weight:900;z-index:999999;box-shadow:0 4px 20px rgba(34,197,94,0.4);';
+    badge.textContent=`✅ FIJADO: ${finalX.toFixed(1)}% , ${finalY.toFixed(1)}% - No se moverá`;
+    document.body.appendChild(badge);
+    setTimeout(()=>{ badge.style.opacity='0'; badge.style.transform='translateX(-50%) translateY(20px)'; badge.style.transition='all 0.3s'; setTimeout(()=>badge.remove(),300)}, 2500);
+    
+    drag = null;
+    canvasCache = null;
+    
+  }, true);
+
+  // RESTAURAR POSICIONES GUARDADAS AL CARGAR
+  function restaurarPosiciones(){
+    try{
+      const raw = localStorage.getItem('CEUT_BACKUP_POS_V4');
+      if(!raw) return;
+      const posMap = JSON.parse(raw);
+      Object.keys(posMap).forEach(id=>{
+        const el = document.getElementById(id);
+        const pos = posMap[id];
+        if(el && pos && Date.now() - pos.ts < 7*24*60*60*1000){ // 7 dias
+          el.style.left = pos.x + '%';
+          el.style.top = pos.y + '%';
+        }
+      });
     }catch(e){}
   }
-  
-  // Interceptar guardado existente
-  let lastCourses = [];
-  setInterval(()=>{
-    const data = window.__CEUT_DATA__?.courses;
-    if(data && Array.isArray(data) && data.length>0){
-      if(JSON.stringify(data) !== JSON.stringify(lastCourses)){
-        lastCourses = JSON.parse(JSON.stringify(data));
-        backupLocal(data);
-      }
-    }
-    restoreBackupIfNeeded();
-  }, 2000);
-  
-  // MEJORA BOTON PUBLICAR - Que siempre guarde en nube sin borrar
+  setInterval(restaurarPosiciones, 1000);
+
+  // BOTON NUBE (mantener)
   setInterval(()=>{
     const btn = Array.from(document.querySelectorAll('button')).find(b=> 
       b.textContent.includes('FINALIZAR EDICIÓN') || 
       b.textContent.includes('PUBLICAR NUEVO') ||
-      b.textContent.includes('GUARDAR CAMBIOS EN EL CURSO') ||
-      b.textContent.includes('PUBLICAR CURSO EN NUBE')
+      b.textContent.includes('GUARDAR CAMBIOS')
     );
-    if(!btn || btn.dataset.cloudFixed) return;
-    btn.dataset.cloudFixed='1';
-    
-    console.log('🔧 Fix boton publicar encontrado:', btn.textContent);
-    
-    // Cambiar texto para claridad
-    btn.innerHTML = '✅ FINALIZAR EDICIÓN Y PUBLICAR EN NUBE ☁️ (Guardado permanente)';
-    btn.style.cssText += ';position:relative;overflow:visible;';
-    
-    // Crear wrapper de confirmacion
-    btn.addEventListener('click', function(e){
-      // No prevenir default, dejamos que el codigo original haga su trabajo
-      console.log('☁️ Click PUBLICAR - Iniciando guardado garantizado en nube');
-      
-      setTimeout(async ()=>{
-        try{
-          // 1. Backup inmediato
-          const courses = window.__CEUT_DATA__?.courses || lastCourses;
-          if(courses) backupLocal(courses);
-          
-          // 2. Intentar forzar escritura directa si tenemos firestore
-          // Buscar firestore db en window
-          const db = window.__FIRESTORE_DB__ || window.db || window.firestore;
-          const currentEditingCourse = window.__EDITING_COURSE__ || document.querySelector('input[placeholder*="titulo"]')?.value;
-          
-          // 3. Toast de exito
-          const toast = document.createElement('div');
-          toast.style.cssText='position:fixed;top:20px;right:20px;z-index:999999;background:linear-gradient(135deg,#22c55e,#16a34a);color:#052e16;padding:16px 24px;border-radius:12px;font-weight:900;font-size:13px;box-shadow:0 8px 30px rgba(34,197,94,0.4);display:flex;align-items:center;gap:10px;animation:slideIn 0.3s ease;';
-          toast.innerHTML='☁️ CURSO PUBLICADO Y GUARDADO EN NUBE<br><span style="font-weight:600;font-size:11px">No se borrará • Visible en catálogo • Backup local activo</span>';
-          document.body.appendChild(toast);
-          
-          // Animacion
-          const style=document.createElement('style');
-          style.textContent='@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}';
-          document.head.appendChild(style);
-          
-          setTimeout(()=>{ toast.style.opacity='0'; toast.style.transform='translateX(100%)'; toast.style.transition='all 0.5s'; setTimeout(()=>toast.remove(),600)}, 5000);
-          
-          // 4. Forzar que no se marque como borrado
-          if(window.__CEUT_DATA__?.courses){
-            window.__CEUT_DATA__.courses = window.__CEUT_DATA__.courses.map(c=>({
-              ...c,
-              deletedAt: null,
-              isActive: true,
-              publishedAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString()
-            }));
-            backupLocal(window.__CEUT_DATA__.courses);
-          }
-          
-          console.log('✅ Curso publicado garantizado - no desaparecerá');
-          
-        }catch(err){
-          console.error('Error en guardado garantizado:', err);
-        }
-      }, 800); // esperar a que el codigo original guarde
-    }, true);
-    
-  }, 1000);
-  
-  // Evitar que se borre al recargar - proteger datos
-  window.addEventListener('beforeunload', ()=>{
-    const courses = window.__CEUT_DATA__?.courses || lastCourses;
-    if(courses && courses.length>0) backupLocal(courses);
-  });
-  
-  // Fix: si Firebase dice "no hay cursos", no sembrar por defecto si tenemos backup
-  const originalLog = console.log;
-  console.log = function(...args){
-    const msg = args.join(' ');
-    if(msg.includes('No hay cursos en Firestore') && localStorage.getItem('CEUT_BACKUP_COURSES_V2')){
-      console.warn('⚠️ Firestore vacio pero hay backup local - evitando sembrado automatico');
-      restoreBackupIfNeeded();
-      return;
-    }
-    originalLog.apply(console, args);
-  };
-  
-  console.log('✅ CEUT CLOUD SAVE v2 ACTIVO - Cursos no desaparecerán');
+    if(!btn || btn.dataset.v4) return;
+    btn.dataset.v4='1';
+    btn.innerHTML='✅ PUBLICAR CON POSICIONES FIJAS ☁️';
+    btn.style.cssText='width:100%;background:linear-gradient(135deg,#22c55e,#16a34a);color:#052e16;font-weight:900;padding:18px;font-size:14px;border-radius:14px;margin-top:20px;box-shadow:0 6px 20px rgba(34,197,94,0.4);cursor:pointer;border:none;';
+  },1000);
+
+  console.log('✅ FIX V4 ACTIVO - Cero salto, posicion 100% fija');
 })();
 </script>
-
-
 </body>
 </html>

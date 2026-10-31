@@ -284,18 +284,23 @@
                                 <div class="flex items-center justify-between">
                                     <div>
                                         <h4 class="font-bold text-ceut-navy text-base">Evaluación del Módulo</h4>
-                                        <p class="text-xs text-slate-600">Responde las preguntas fijadas para registrar tu calificación.</p>
+                                        <p class="text-xs text-slate-600">Responde las preguntas fijadas para registrar tu calificación. <strong class="text-red-600">Nota: Tienes una sola oportunidad para responder la evaluación por usuario y correo.</strong></p>
                                     </div>
-                                    <span class="text-xs font-bold px-2.5 py-1 bg-amber-200 text-amber-900 rounded">Evaluación Desbloqueada</span>
+                                    <span id="evalStatusBadge" class="text-xs font-bold px-2.5 py-1 bg-amber-200 text-amber-900 rounded">Evaluación Desbloqueada</span>
                                 </div>
+                            </div>
+
+                            <div id="attemptNoticeBox" class="hidden bg-red-50 border border-red-300 p-4 rounded-xl text-xs text-red-800 space-y-1">
+                                <p class="font-bold flex items-center gap-2"><i class="fa-solid fa-triangle-exclamation text-base"></i> Oportunidad Única Agotada</p>
+                                <p>Ya has realizado la evaluación de este curso con tu correo institucional registrado y no es posible volver a presentarla.</p>
                             </div>
 
                             <form id="quizForm" onsubmit="window.handleQuizSubmit(event)" class="space-y-6">
                                 <div id="quizQuestionsList" class="space-y-6"></div>
 
-                                <button type="submit" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow-md transition-colors flex items-center justify-center gap-2">
+                                <button type="submit" id="btnSubmitQuiz" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow-md transition-colors flex items-center justify-center gap-2">
                                     <i class="fa-solid fa-floppy-disk"></i>
-                                    <span>Guardar y Registrar Evaluación de Módulo</span>
+                                    <span>Guardar y Registrar Evaluación de Módulo (Única Oportunidad)</span>
                                 </button>
                             </form>
                         </div>
@@ -318,11 +323,11 @@
                                 <i class="fa-solid fa-trophy"></i>
                             </div>
                             <div>
-                                <h4 class="font-bold text-emerald-900 text-sm">¡Curso Finalizado!</h4>
-                                <p class="text-xs text-emerald-700 mt-1">Has concluido los contenidos y la evaluación correspondientes.</p>
+                                <h4 class="font-bold text-emerald-900 text-sm">¡Curso Aprobado Satisfactoriamente!</h4>
+                                <p class="text-xs text-emerald-700 mt-1">Has alcanzado el puntaje mínimo requerido del 80%. Puedes descargar o imprimir tu constancia oficial a continuación.</p>
                             </div>
-                            <button onclick="window.generateAndShowCertificate()" class="w-full py-2.5 bg-ceut-gold hover:bg-ceut-goldDark text-ceut-navy font-extrabold text-xs rounded-lg shadow uppercase tracking-wider flex items-center justify-center gap-2">
-                                <i class="fa-solid fa-certificate"></i> Obtener Mi Constancia Oficial
+                            <button onclick="window.downloadStudentCertificate()" class="w-full py-3 bg-ceut-gold hover:bg-ceut-goldDark text-ceut-navy font-black text-xs rounded-lg shadow uppercase tracking-wider flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-file-arrow-down text-base"></i> Descargar e Imprimir Mi Constancia Oficial
                             </button>
                         </div>
                     </div>
@@ -379,7 +384,7 @@
                                     <th class="p-3">Perfil</th>
                                     <th class="p-3">Contraseña Actual</th>
                                     <th class="p-3">Folio Asignado</th>
-                                    <th class="p-3">Curso / Avance</th>
+                                    <th class="p-3">Calificación / Estado</th>
                                     <th class="p-3 text-center">Acción de Control</th>
                                 </tr>
                             </thead>
@@ -1074,6 +1079,7 @@
         window.currentModuleIndex = 0;
         window.activeSelectedCourseForEnrollment = null;
         window.isAdminLoggedIn = false;
+        window.currentUserRecord = null;
 
         // DRAG & DROP CERTIFICATE VARIABLES
         let isDragging = false;
@@ -1205,7 +1211,11 @@
                 return;
             }
 
-            tbody.innerHTML = window.registeredUsers.map((user, idx) => `
+            tbody.innerHTML = window.registeredUsers.map((user, idx) => {
+                const score = user.score !== undefined ? user.score : (user.progress || 0);
+                const isApproved = score >= 80;
+
+                return `
                 <tr class="border-b border-slate-100 hover:bg-slate-50">
                     <td class="p-3 font-bold text-slate-800">${user.academicTitle ? user.academicTitle + ' ' : ''}${user.fullName}</td>
                     <td class="p-3 text-slate-600">${user.email}</td>
@@ -1219,14 +1229,43 @@
                         </div>
                     </td>
                     <td class="p-3 font-mono font-bold text-ceut-navy">${user.folio || 'CEUT_DOC_01_001'}</td>
-                    <td class="p-3"><span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded font-bold">${user.progress || 0}%</span></td>
+                    <td class="p-3">
+                        <div class="flex flex-col gap-1">
+                            <span class="px-2 py-0.5 rounded font-bold text-xs inline-block w-fit ${isApproved ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">
+                                ${score}% ${isApproved ? '(Aprobado ≥ 80%)' : '(En proceso)'}
+                            </span>
+                            ${isApproved ? `
+                                <button onclick="window.viewUserCertificate('${user.id}')" class="mt-1 px-2.5 py-1 bg-ceut-navy hover:bg-ceut-purple text-ceut-gold font-bold rounded text-[10px] flex items-center gap-1 shadow-sm w-fit">
+                                    <i class="fa-solid fa-certificate"></i> Ver Constancia
+                                </button>
+                            ` : '<span class="text-[10px] text-slate-400 italic">Mínimo 80% para constancia</span>'}
+                        </div>
+                    </td>
                     <td class="p-3 text-center">
                         <button onclick="window.deleteUserRecord('${user.id}')" class="px-2.5 py-1 bg-red-100 text-red-700 hover:bg-red-200 rounded font-bold text-[11px] transition-colors">
                             <i class="fa-solid fa-trash-can mr-1"></i> Eliminar
                         </button>
                     </td>
                 </tr>
-            `).join('');
+            `;
+            }).join('');
+        };
+
+        window.viewUserCertificate = function(userId) {
+            const user = window.registeredUsers.find(u => u.id === userId);
+            if (!user) return;
+
+            window.switchAdminSubTab('certDesign');
+
+            const nameInput = document.getElementById('certInputName');
+            const roleSelect = document.getElementById('certInputRole');
+            const dateInput = document.getElementById('certInputDate');
+
+            if (nameInput) nameInput.value = `${user.academicTitle ? user.academicTitle + ' ' : ''}${user.fullName}`;
+            if (roleSelect) roleSelect.value = user.roleCategory || 'DOC';
+            if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
+
+            window.updateCertificatePreview();
         };
 
         window.updateUserPassword = function(userId, index) {
@@ -1695,26 +1734,57 @@
             if (event) event.preventDefault();
             const title = document.getElementById('regAcademicTitle').value;
             const name = document.getElementById('regFullName').value.trim();
-            const email = document.getElementById('regEmail').value.trim();
+            const email = document.getElementById('regEmail').value.trim().toLowerCase();
             const pass = document.getElementById('regPassword').value.trim();
+            const targetCourseId = window.activeSelectedCourseForEnrollment?.id || 'CEUT_DOC_01';
 
-            const userObj = {
-                id: `usr_${Date.now()}`,
-                academicTitle: title,
-                fullName: name,
-                email: email,
-                password: pass,
-                roleCategory: window.activeSelectedCourseForEnrollment?.roleCategory || 'DOC',
-                folio: window.activeSelectedCourseForEnrollment?.id || 'CEUT_DOC_01',
-                courseId: window.activeSelectedCourseForEnrollment?.id,
-                progress: 0
-            };
+            // Verificar si el curso se encuentra en la ventana de fechas/horarios permitidos
+            if (!window.isCourseAccessTimeValid(window.activeSelectedCourseForEnrollment)) {
+                alert("El tiempo asignado para este curso ha expirado o aún no ha iniciado. Consulta los horarios de vigencia.");
+                return;
+            }
 
-            window.registeredUsers.push(userObj);
-            if (window.saveUserToFirestore) window.saveUserToFirestore(userObj);
+            // Buscar si ya existe un registro con este correo y curso
+            let existingUser = window.registeredUsers.find(u => u.email === email && u.courseId === targetCourseId);
+
+            if (existingUser) {
+                // Si la contraseña coincide, le permite retomar el curso
+                if (existingUser.password !== pass) {
+                    alert("El correo institucional ya está registrado. Introduce la contraseña correcta para retomar tu curso.");
+                    return;
+                }
+                window.currentUserRecord = existingUser;
+            } else {
+                // Nuevo registro
+                window.currentUserRecord = {
+                    id: `usr_${Date.now()}`,
+                    academicTitle: title,
+                    fullName: name,
+                    email: email,
+                    password: pass,
+                    roleCategory: window.activeSelectedCourseForEnrollment?.roleCategory || 'DOC',
+                    folio: targetCourseId,
+                    courseId: targetCourseId,
+                    progress: 0,
+                    score: 0,
+                    hasAttempted: false
+                };
+                window.registeredUsers.push(window.currentUserRecord);
+                if (window.saveUserToFirestore) window.saveUserToFirestore(window.currentUserRecord);
+            }
 
             window.closeRegistrationModal();
             window.launchCoursePlayer(window.activeSelectedCourseForEnrollment);
+        };
+
+        window.isCourseAccessTimeValid = function(course) {
+            if (!course || !course.startDate || !course.endDate) return true;
+
+            const now = new Date();
+            const start = new Date(`${course.startDate}T${course.startTime || '00:00'}:00`);
+            const end = new Date(`${course.endDate}T${course.endTime || '23:59'}:00`);
+
+            return now >= start && now <= end;
         };
 
         window.launchCoursePlayer = function(course) {
@@ -1734,109 +1804,100 @@
             document.getElementById('playerCourseDates').innerText = `${course.startDate || '--'} al ${course.endDate || '--'}`;
             document.getElementById('playerCourseTimes').innerText = `${course.startTime || '--'} a ${course.endTime || '--'}`;
 
+            // Check if user already completed an attempt
+            if (window.currentUserRecord && window.currentUserRecord.hasAttempted) {
+                const quizForm = document.getElementById('quizForm');
+                const noticeBox = document.getElementById('attemptNoticeBox');
+                if (quizForm) quizForm.classList.add('hidden');
+                if (noticeBox) noticeBox.classList.remove('hidden');
+
+                if ((window.currentUserRecord.score || 0) >= 80) {
+                    document.getElementById('courseCompletionCard').classList.remove('hidden');
+                }
+            } else {
+                const quizForm = document.getElementById('quizForm');
+                const noticeBox = document.getElementById('attemptNoticeBox');
+                if (quizForm) quizForm.classList.remove('hidden');
+                if (noticeBox) noticeBox.classList.add('hidden');
+            }
+
             window.loadModuleInPlayer(0);
             window.renderModulesSidebar();
         };
 
-        window.loadModuleInPlayer = function(modIndex) {
-            if (!window.currentCourse || !window.currentCourse.modules) return;
-            window.currentModuleIndex = modIndex;
+        window.handleQuizSubmit = function(event) {
+            if (event) event.preventDefault();
 
-            const module = window.currentCourse.modules[modIndex];
-            if (!module) return;
-
-            document.getElementById('currentModuleName').innerText = module.title;
-            const youtubeIframe = document.getElementById('youtubeIframe');
-            const simulatedPlayer = document.getElementById('simulatedPlayer');
-
-            if (module.videoUrl && (module.videoUrl.includes('youtube.com') || module.videoUrl.includes('youtu.be'))) {
-                youtubeIframe.src = module.videoUrl;
-                youtubeIframe.classList.remove('hidden');
-                simulatedPlayer.classList.add('hidden');
-            } else {
-                youtubeIframe.classList.add('hidden');
-                simulatedPlayer.classList.remove('hidden');
-                document.getElementById('simulatedTitle').innerText = module.title;
-            }
-
-            // Material
-            const materialsContent = document.getElementById('materialsContent');
-            if (materialsContent) {
-                if (module.materialUrl) {
-                    materialsContent.innerHTML = `
-                        <span class="font-bold text-slate-700"><i class="fa-solid fa-file-pdf text-red-600 mr-1"></i> Documentación Adjunta</span>
-                        <a href="${module.materialUrl}" target="_blank" class="px-3 py-1.5 bg-ceut-navy text-white font-bold rounded-lg hover:bg-ceut-purple"><i class="fa-solid fa-download mr-1"></i> Abrir Material</a>
-                    `;
-                } else {
-                    materialsContent.innerHTML = `<span class="text-slate-400 italic">No se adjuntó material PDF adicional para este módulo.</span>`;
-                }
-            }
-
-            window.renderQuizQuestions(module.questions || []);
-            document.getElementById('evaluationContainer').classList.add('hidden');
-        };
-
-        window.simulateVideoProgress = function() {
-            const bar = document.getElementById('simulatedProgressBar');
-            const badge = document.getElementById('videoStatusBadge');
-            if (bar) bar.style.width = '100%';
-            if (badge) {
-                badge.className = "text-xs px-2.5 py-1 rounded-full font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1";
-                badge.innerHTML = `<i class="fa-solid fa-circle-check"></i> Reproducción Concluida`;
-            }
-            document.getElementById('evaluationContainer').classList.remove('hidden');
-        };
-
-        window.renderQuizQuestions = function(questions) {
-            const container = document.getElementById('quizQuestionsList');
-            if (!container) return;
-
-            if (questions.length === 0) {
-                container.innerHTML = `<p class="text-xs text-slate-400 italic">Este módulo no cuenta con reactivos de evaluación asignados.</p>`;
+            if (window.currentUserRecord && window.currentUserRecord.hasAttempted) {
+                alert("Ya has utilizado tu única oportunidad para realizar este curso con tu correo institucional.");
                 return;
             }
 
-            container.innerHTML = questions.map((q, idx) => `
-                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-                    <p class="font-bold text-xs text-ceut-navy">${idx + 1}. ${q.question}</p>
-                    ${q.type === 'multiple' ? `
-                        <div class="space-y-1">
-                            ${(q.options || []).map((opt, oIdx) => `
-                                <label class="flex items-center gap-2 text-xs text-slate-700 bg-white p-2 rounded-lg border border-slate-200 cursor-pointer hover:bg-amber-50">
-                                    <input type="radio" name="q_${idx}" value="${oIdx}" class="text-ceut-navy">
-                                    <span>${opt}</span>
-                                </label>
-                            `).join('')}
-                        </div>
-                    ` : q.type === 'boolean' ? `
-                        <div class="flex gap-4 text-xs">
-                            <label class="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-slate-200 cursor-pointer">
-                                <input type="radio" name="q_${idx}" value="true"> Verdadero
-                            </label>
-                            <label class="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-slate-200 cursor-pointer">
-                                <input type="radio" name="q_${idx}" value="false"> Falso
-                            </label>
-                        </div>
-                    ` : `
-                        <p class="text-[11px] text-slate-500">Ordena conceptualmente del 1 al 4 las ideas propuestas.</p>
-                    `}
-                </div>
-            `).join('');
+            const currentMod = window.currentCourse?.modules?.[window.currentModuleIndex];
+            const questions = currentMod?.questions || [];
+            
+            let correctCount = 0;
+            const totalQuestions = questions.length;
+
+            if (totalQuestions > 0) {
+                questions.forEach((q, idx) => {
+                    const selected = document.querySelector(`input[name="q_${idx}"]:checked`);
+                    if (selected) {
+                        if (q.type === 'multiple' && parseInt(selected.value, 10) === q.correctIndex) {
+                            correctCount++;
+                        } else if (q.type === 'boolean' && (selected.value === 'true') === q.correctValue) {
+                            correctCount++;
+                        }
+                    }
+                });
+            }
+
+            const moduleScore = totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 100;
+            const totalMods = window.currentCourse?.modules?.length || 1;
+            
+            window.currentCourseScores = window.currentCourseScores || {};
+            window.currentCourseScores[window.currentModuleIndex] = moduleScore;
+
+            let totalScoreSum = 0;
+            Object.values(window.currentCourseScores).forEach(s => totalScoreSum += s);
+            const overallScore = Math.round(totalScoreSum / totalMods);
+
+            document.getElementById('playerProgressPercentage').innerText = `${overallScore}%`;
+
+            // Registrar intento único realizado en la cuenta del usuario
+            if (window.currentUserRecord) {
+                window.currentUserRecord.score = overallScore;
+                window.currentUserRecord.progress = overallScore;
+                window.currentUserRecord.hasAttempted = true;
+                if (window.saveUserToFirestore) window.saveUserToFirestore(window.currentUserRecord);
+            }
+
+            // Ocultar formulario e impedir intentos extra
+            document.getElementById('quizForm').classList.add('hidden');
+            document.getElementById('attemptNoticeBox').classList.remove('hidden');
+
+            if (overallScore >= 80) {
+                document.getElementById('courseCompletionCard').classList.remove('hidden');
+                alert(`¡Felicidades! Calificación obtenida: ${overallScore}%. Alcanzaste el 80% mínimo. Puedes descargar tu reconocimiento oficial a continuación.`);
+            } else {
+                alert(`Evaluación finalizada. Tu calificación final fue del ${overallScore}%. Al no alcanzar el 80% mínimo y ser una única oportunidad por correo registrado, no es posible emitir la constancia.`);
+            }
         };
 
-        window.handleQuizSubmit = function(event) {
-            if (event) event.preventDefault();
-            const totalMods = window.currentCourse?.modules?.length || 1;
-            const progress = Math.round(((window.currentModuleIndex + 1) / totalMods) * 100);
+        window.downloadStudentCertificate = function() {
+            if (!window.currentUserRecord) return;
+            window.switchAdminSubTab('certDesign');
 
-            document.getElementById('playerProgressPercentage').innerText = `${progress}%`;
+            const nameInput = document.getElementById('certInputName');
+            const roleSelect = document.getElementById('certInputRole');
+            const dateInput = document.getElementById('certInputDate');
 
-            if (progress >= 100) {
-                document.getElementById('courseCompletionCard').classList.remove('hidden');
-                alert("¡Felicidades! Has concluido satisfactoriamente todos los módulos y evaluaciones del curso.");
-            } else {
-                alert("Evaluación del módulo guardada exitosamente. Continúa con el siguiente módulo.");
-            }
+            if (nameInput) nameInput.value = `${window.currentUserRecord.academicTitle ? window.currentUserRecord.academicTitle + ' ' : ''}${window.currentUserRecord.fullName}`;
+            if (roleSelect) roleSelect.value = window.currentUserRecord.roleCategory || 'DOC';
+            if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
+
+            window.updateCertificatePreview();
+            window.print();
         };
 
         window.renderModulesSidebar = function() {

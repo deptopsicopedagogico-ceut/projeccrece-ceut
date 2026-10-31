@@ -123,24 +123,24 @@
 
     <!-- HEADER / NAVIGATION WITH CLEAN PURE LOGOS -->
     <header class="bg-ceut-navy text-white shadow-xl sticky top-0 z-50 border-b-4 border-ceut-gold transition-all duration-300">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-44 flex items-center justify-between gap-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-36 sm:h-44 flex items-center justify-between gap-8">
             
-            <!-- LEFT LOGO: CEUT SHIELD / TIGER (ENLARGED) -->
+            <!-- LEFT LOGO: CEUT SHIELD / TIGER (TRANSPARENT & ENLARGED) -->
             <div class="flex items-center shrink-0">
-                <div class="h-36 sm:h-40 w-auto flex items-center justify-center animate-float hover:scale-105 transition-transform duration-300">
+                <div class="h-28 sm:h-40 w-auto flex items-center justify-center animate-float hover:scale-105 transition-transform duration-300">
                     <img src="https://lh3.googleusercontent.com/d/1ao9olFJOvSPvgmeyLJhkD1P0Pmq_R3T2" 
                          alt="Logo CEUT Tigre" 
-                         class="h-full w-auto object-contain"
+                         class="h-full w-auto object-contain bg-transparent border-0 ring-0 shadow-none"
                          onerror="this.onerror=null; this.src='https://drive.google.com/thumbnail?id=1ao9olFJOvSPvgmeyLJhkD1P0Pmq_R3T2&sz=w500';">
                 </div>
             </div>
 
-            <!-- CENTER & RIGHT: PROMINENT INSTITUTIONAL LOGO (SHIFTED FURTHER TO THE RIGHT) -->
-            <div class="flex-grow flex items-center justify-end pl-8 pr-2 sm:pr-6">
-                <div class="h-36 sm:h-40 w-full max-w-3xl flex items-center justify-end animate-pulse-subtle hover:scale-105 transition-transform duration-300">
+            <!-- CENTER & RIGHT: PROMINENT INSTITUTIONAL LOGO (TRANSPARENT) -->
+            <div class="flex-grow flex items-center justify-end pl-4 sm:pl-8 pr-2 sm:pr-6">
+                <div class="h-28 sm:h-40 w-full max-w-3xl flex items-center justify-end animate-pulse-subtle hover:scale-105 transition-transform duration-300">
                     <img src="https://lh3.googleusercontent.com/d/1DjgB_5Qp3_RdLO16akM2WxFj6Rux-3Ic" 
                          alt="Capacitación Psicopedagógica Institucional - Programa CRECE CEUT" 
-                         class="h-full w-full object-contain object-right"
+                         class="h-full w-full object-contain object-right bg-transparent border-0 ring-0 shadow-none"
                          onerror="this.onerror=null; this.src='https://drive.google.com/thumbnail?id=1DjgB_5Qp3_RdLO16akM2WxFj6Rux-3Ic&sz=w800';">
                 </div>
             </div>
@@ -148,12 +148,12 @@
         </div>
     </header>
 
-    <!-- MOTIVATIONAL WELCOME BANNER -->
+    <!-- MOTIVATIONAL WELCOME BANNER WITH EMBEDDED TRANSPARENT LOGO BADGE -->
     <div class="bg-gradient-to-r from-ceut-navy via-ceut-purple to-ceut-navy text-white shadow-md border-b-2 border-ceut-gold/40 py-4 px-6">
         <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
             <div class="flex items-center gap-4">
-                <div class="w-12 h-12 rounded-full bg-ceut-gold/20 border-2 border-ceut-gold flex items-center justify-center shrink-0 shadow-lg">
-                    <i class="fa-solid fa-graduation-cap text-ceut-gold text-2xl"></i>
+                <div class="w-14 h-14 rounded-2xl bg-white/10 border-2 border-ceut-gold flex items-center justify-center shrink-0 shadow-lg p-1 backdrop-blur-sm">
+                    <img src="https://lh3.googleusercontent.com/d/1ao9olFJOvSPvgmeyLJhkD1P0Pmq_R3T2" alt="CEUT Shield" class="h-full w-auto object-contain bg-transparent">
                 </div>
                 <div>
                     <h2 class="text-lg sm:text-xl font-black text-ceut-gold tracking-wide uppercase">¡Bienvenido al Portal de Capacitación CRECE CEUT!</h2>
@@ -844,9 +844,9 @@
     <div id="registrationModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-5 border border-slate-100">
             <div class="flex justify-between items-center border-b pb-3 border-slate-100">
-                <div class="flex items-center space-x-2">
-                    <div class="w-8 h-8 rounded-full bg-ceut-gold text-ceut-navy font-bold flex items-center justify-center text-xs">
-                        CEUT
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-xl bg-ceut-navy border border-ceut-gold flex items-center justify-center p-1 shadow">
+                        <img src="https://lh3.googleusercontent.com/d/1ao9olFJOvSPvgmeyLJhkD1P0Pmq_R3T2" alt="CEUT" class="h-full w-auto object-contain bg-transparent">
                     </div>
                     <h3 class="font-bold text-ceut-navy text-base">Inscripción / Acceso a Aula Virtual</h3>
                 </div>
@@ -906,8 +906,8 @@
     <!-- MODAL: ADMIN AUTH (Password jcas1015) -->
     <div id="adminAuthModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 space-y-4 border border-slate-100 text-center">
-            <div class="w-12 h-12 bg-amber-100 text-ceut-navy rounded-full flex items-center justify-center mx-auto text-xl font-bold">
-                <i class="fa-solid fa-key text-ceut-gold"></i>
+            <div class="w-14 h-14 bg-ceut-navy border-2 border-ceut-gold rounded-2xl flex items-center justify-center mx-auto p-1 shadow-lg">
+                <img src="https://lh3.googleusercontent.com/d/1ao9olFJOvSPvgmeyLJhkD1P0Pmq_R3T2" alt="CEUT Logo" class="h-full w-auto object-contain bg-transparent">
             </div>
             <div>
                 <h3 class="font-bold text-ceut-navy text-base">Acceso Control Total Administrador</h3>

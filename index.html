@@ -169,18 +169,22 @@
         <!-- MAIN NAVIGATION TABS -->
         <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-1.5 flex flex-wrap gap-2">
             <button onclick="selectCategoryTab('DOC')" id="nav-btn-DOC" class="main-nav-btn flex-1 min-w-[140px] py-3 px-4 rounded-lg font-bold text-sm flex items-center justify-center space-x-2 bg-ceut-navy text-white transition-all shadow-sm hover:-translate-y-0.5">
+                <img src="https://lh3.googleusercontent.com/d/1ao9olFJOvSPvgmeyLJhkD1P0Pmq_R3T2" alt="CEUT" class="h-5 w-auto object-contain inline-block mr-1">
                 <i class="fa-solid fa-chalkboard-user text-ceut-gold"></i>
                 <span>Cursos Docentes</span>
             </button>
             <button onclick="selectCategoryTab('AUL')" id="nav-btn-AUL" class="main-nav-btn flex-1 min-w-[140px] py-3 px-4 rounded-lg font-medium text-sm flex items-center justify-center space-x-2 text-slate-600 hover:bg-slate-100 transition-all hover:-translate-y-0.5">
+                <img src="https://lh3.googleusercontent.com/d/1ao9olFJOvSPvgmeyLJhkD1P0Pmq_R3T2" alt="CEUT" class="h-5 w-auto object-contain inline-block mr-1">
                 <i class="fa-solid fa-user-graduate"></i>
                 <span>Cursos Alumnos</span>
             </button>
             <button onclick="selectCategoryTab('ADM')" id="nav-btn-ADM" class="main-nav-btn flex-1 min-w-[140px] py-3 px-4 rounded-lg font-medium text-sm flex items-center justify-center space-x-2 text-slate-600 hover:bg-slate-100 transition-all hover:-translate-y-0.5">
+                <img src="https://lh3.googleusercontent.com/d/1ao9olFJOvSPvgmeyLJhkD1P0Pmq_R3T2" alt="CEUT" class="h-5 w-auto object-contain inline-block mr-1">
                 <i class="fa-solid fa-user-gear"></i>
                 <span>Cursos Administrativos</span>
             </button>
             <button onclick="openAdminPortal()" id="nav-btn-ADMIN" class="main-nav-btn border-l-2 border-slate-200 flex-1 min-w-[140px] py-3 px-4 rounded-lg font-bold text-sm flex items-center justify-center space-x-2 text-ceut-purple hover:bg-amber-50 transition-all hover:-translate-y-0.5">
+                <img src="https://lh3.googleusercontent.com/d/1ao9olFJOvSPvgmeyLJhkD1P0Pmq_R3T2" alt="CEUT" class="h-5 w-auto object-contain inline-block mr-1">
                 <i class="fa-solid fa-sliders text-ceut-gold"></i>
                 <span>Portal Administrativo</span>
             </button>
@@ -189,11 +193,15 @@
         <!-- SECTION 1: CATALOG OF COURSES BY SELECTED ROLE -->
         <section id="section-catalog" class="space-y-6 transition-all duration-300">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
-                <div>
-                    <h2 class="text-xl font-bold text-ceut-navy" id="catalogTitleHeader">Catálogo de Cursos para Docentes</h2>
-                    <p class="text-sm text-slate-500" id="catalogSubHeader">Cursos oficiales programados para el personal docente CEUT.</p>
+                <div class="flex items-center gap-4">
+                    <img src="https://lh3.googleusercontent.com/d/1ao9olFJOvSPvgmeyLJhkD1P0Pmq_R3T2" alt="CEUT Shield" class="h-10 w-auto object-contain">
+                    <div>
+                        <h2 class="text-xl font-bold text-ceut-navy" id="catalogTitleHeader">Catálogo de Cursos para Docentes</h2>
+                        <p class="text-sm text-slate-500" id="catalogSubHeader">Cursos oficiales programados para el personal docente CEUT.</p>
+                    </div>
                 </div>
-                <span class="text-xs font-bold font-mono px-3 py-1.5 bg-amber-100 text-amber-900 border border-amber-300 rounded-lg shadow-sm" id="activeCategoryBadge">
+                <span class="text-xs font-bold font-mono px-3 py-1.5 bg-amber-100 text-amber-900 border border-amber-300 rounded-lg shadow-sm flex items-center gap-2" id="activeCategoryBadge">
+                    <img src="https://lh3.googleusercontent.com/d/1ao9olFJOvSPvgmeyLJhkD1P0Pmq_R3T2" alt="CEUT" class="h-4 w-auto object-contain">
                     CATEGORÍA: DOCENTES (DOC)
                 </span>
             </div>
@@ -209,12 +217,15 @@
             <div class="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
                 <!-- Course Top Banner -->
                 <div class="bg-ceut-navy text-white p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b-4 border-ceut-gold">
-                    <div>
-                        <span class="text-xs font-mono font-bold px-2.5 py-1 bg-amber-400 text-ceut-navy rounded uppercase tracking-wider" id="playerCourseFolio">CEUT_DOC_01</span>
-                        <h2 class="text-xl font-bold text-white mt-2" id="playerCourseTitle">Nombre del Curso</h2>
-                        <div class="flex items-center gap-4 text-xs text-slate-300 mt-1">
-                            <span><i class="fa-regular fa-calendar mr-1"></i> Vigencia: <strong id="playerCourseDates">--/--/----</strong></span>
-                            <span><i class="fa-regular fa-clock mr-1"></i> Horario: <strong id="playerCourseTimes">--:-- a --:--</strong></span>
+                    <div class="flex items-start gap-4">
+                        <img src="https://lh3.googleusercontent.com/d/1ao9olFJOvSPvgmeyLJhkD1P0Pmq_R3T2" alt="CEUT Shield" class="h-12 w-auto object-contain mt-1">
+                        <div>
+                            <span class="text-xs font-mono font-bold px-2.5 py-1 bg-amber-400 text-ceut-navy rounded uppercase tracking-wider" id="playerCourseFolio">CEUT_DOC_01</span>
+                            <h2 class="text-xl font-bold text-white mt-2" id="playerCourseTitle">Nombre del Curso</h2>
+                            <div class="flex items-center gap-4 text-xs text-slate-300 mt-1">
+                                <span><i class="fa-regular fa-calendar mr-1"></i> Vigencia: <strong id="playerCourseDates">--/--/----</strong></span>
+                                <span><i class="fa-regular fa-clock mr-1"></i> Horario: <strong id="playerCourseTimes">--:-- a --:--</strong></span>
+                            </div>
                         </div>
                     </div>
                     <div class="text-right">
@@ -228,6 +239,7 @@
                     <div class="lg:col-span-2 p-6 space-y-4">
                         <div class="flex items-center justify-between">
                             <h3 class="font-bold text-lg text-ceut-navy flex items-center gap-2">
+                                <img src="https://lh3.googleusercontent.com/d/1ao9olFJOvSPvgmeyLJhkD1P0Pmq_R3T2" alt="CEUT" class="h-6 w-auto object-contain">
                                 <i class="fa-solid fa-circle-play text-ceut-gold"></i>
                                 <span id="currentModuleName">Módulo 1: Introducción</span>
                             </h3>
@@ -403,20 +415,20 @@
                             </thead>
                             <tbody id="usersMasterTableBody" class="divide-y divide-slate-200 bg-white">
                                 <!-- Dynamic user row insertion -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- SUB-VIEW 2: COURSES LIST & FULL COURSE BUILDER -->
-                <div id="adminSubView-courses" class="space-y-4 hidden">
-                    <div class="flex justify-between items-center bg-slate-50 p-4 rounded-xl border border-slate-200">
-                        <div>
-                            <h3 class="font-bold text-sm text-ceut-navy">Módulo de Diseño Integral de Cursos y Evaluaciones</h3>
-                            <p class="text-xs text-slate-500">Crea o edita la portada alusiva, vigencia, recursos PDF, videos y reactivos de evaluación.</p>
-                        </div>
-                        <button onclick="toggleNewCourseForm()" class="px-4 py-2.5 bg-ceut-gold hover:bg-ceut-goldDark text-ceut-navy font-black text-xs rounded-xl shadow flex items-center gap-2 uppercase tracking-wider">
-                            <i class="fa-solid fa-plus-circle text-base"></i> Diseñar Nuevo Curso
+                <!-- SUB-TABS ADMIN -->
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-6">
+                    <div class="flex flex-wrap border-b border-slate-200 gap-2 sm:gap-6">
+                        <button onclick="switchAdminSubTab('users')" id="adminSubBtn-users" class="pb-3 font-bold text-sm text-ceut-navy border-b-2 border-ceut-gold flex items-center gap-2">
+                            <img src="https://lh3.googleusercontent.com/d/1ao9olFJOvSPvgmeyLJhkD1P0Pmq_R3T2" alt="CEUT" class="h-5 w-auto object-contain">
+                            <i class="fa-solid fa-users-gear text-ceut-gold"></i> Control Total Usuarios & Passwords
+                        </button>
+                        <button onclick="switchAdminSubTab('courses')" id="adminSubBtn-courses" class="pb-3 font-medium text-sm text-slate-500 hover:text-ceut-navy flex items-center gap-2">
+                            <img src="https://lh3.googleusercontent.com/d/1ao9olFJOvSPvgmeyLJhkD1P0Pmq_R3T2" alt="CEUT" class="h-5 w-auto object-contain opacity-75">
+                            <i class="fa-solid fa-list-check text-slate-400"></i> Diseñador Integral de Cursos
+                        </button>
+                        <button onclick="switchAdminSubTab('certDesign')" id="adminSubBtn-certDesign" class="pb-3 font-medium text-sm text-slate-500 hover:text-ceut-navy flex items-center gap-2">
+                            <img src="https://lh3.googleusercontent.com/d/1ao9olFJOvSPvgmeyLJhkD1P0Pmq_R3T2" alt="CEUT" class="h-5 w-auto object-contain opacity-75">
+                            <i class="fa-solid fa-certificate text-slate-400"></i> Diseñador de Plantillas & Cajas de Texto
                         </button>
                     </div>
 

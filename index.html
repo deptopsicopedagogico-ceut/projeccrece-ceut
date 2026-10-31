@@ -239,56 +239,31 @@
                                 <span id="currentModuleName">Módulo 1: Introducción</span>
                             </h3>
                             <span id="videoStatusBadge" class="text-xs px-2.5 py-1 rounded-full font-medium bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1">
-                            <form onsubmit="window.handleSaveCourse(event)" class="space-y-6">
-                                <!-- 1. GENERALIDADES -->
-                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div>
-                                        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Perfil Destino</label>
-                                        <select id="courseRoleCategory" class="w-full p-2.5 text-xs font-semibold border border-slate-300 rounded-xl focus:ring-2 focus:ring-ceut-navy">
-                                            <option value="DOC">Docentes (DOC)</option>
-                                            <option value="AUL">Alumnos (AUL)</option>
-                                            <option value="ADM">Administrativos (ADM)</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Número de Curso (Clave)</label>
-                                        <input type="text" id="courseCodeNum" placeholder="Ej. 01, 02, 03" required class="w-full p-2.5 text-xs font-semibold border border-slate-300 rounded-xl focus:ring-2 focus:ring-ceut-navy">
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Nombre Completo del Curso</label>
-                                        <input type="text" id="courseTitleInput" placeholder="Ej. Capacitación Psicopedagógica Avanzada" required class="w-full p-2.5 text-xs font-semibold border border-slate-300 rounded-xl focus:ring-2 focus:ring-ceut-navy">
-                                    </div>
-                                </div>
+                                <i class="fa-solid fa-clock"></i> Pendiente
+                            </span>
+                        </div>
 
-                                <!-- 2. IMAGEN ALUSIVA ADJUNTA O URL -->
-                                <div class="bg-white p-4 rounded-xl border border-slate-200 space-y-3">
-                                    <label class="block text-xs font-bold text-ceut-navy uppercase flex items-center gap-2">
-                                        <i class="fa-solid fa-image text-ceut-gold text-sm"></i> Imagen Alusiva del Curso
-                                    </label>
-                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
-                                        <div>
-                                            <span class="text-[11px] font-medium text-slate-600 block mb-1">Adjuntar Archivo de Imagen:</span>
-                                            <input type="file" id="courseImageFileInput" accept="image/*" onchange="window.handleCourseImageUpload(event)" class="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-ceut-navy file:text-white cursor-pointer">
-                                        </div>
-                                        <div>
-                                            <span class="text-[11px] font-medium text-slate-600 block mb-1">O copiar URL directa de Imagen:</span>
-                                            <input type="url" id="courseImageUrlInput" placeholder="https://ejemplo.com/portada.jpg" oninput="window.previewCourseImage(this.value)" class="w-full p-2.5 text-xs border border-slate-300 rounded-xl">
-                                        </div>
-                                    </div>
-                                    <div id="courseImagePreviewBox" class="mt-2 h-32 w-full rounded-xl bg-slate-100 border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden">
-                                        <span class="text-xs text-slate-400 font-medium">Vista previa de la portada seleccionada</span>
-                                    </div>
+                        <!-- VIDEO PLAYER CONTAINER -->
+                        <div class="aspect-video bg-slate-900 rounded-xl overflow-hidden shadow-inner flex items-center justify-center relative border border-slate-800">
+                            <iframe id="youtubeIframe" class="w-full h-full hidden" src="" title="Video del Módulo" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                            <div id="simulatedPlayer" class="flex flex-col items-center justify-center text-center p-6 space-y-3">
+                                <div class="w-16 h-16 rounded-full bg-ceut-navy border-2 border-ceut-gold text-ceut-gold flex items-center justify-center text-2xl shadow-lg">
+                                    <i class="fa-solid fa-play ml-1"></i>
+                                </div>
+                                <h4 id="simulatedTitle" class="font-bold text-white text-sm">Módulo 1: Introducción a la Capacitación</h4>
+                                <div class="w-48 h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                                    <div id="simulatedProgressBar" class="h-full bg-ceut-gold w-0 transition-all duration-300"></div>
                                 </div>
                             </div>
+                        </div>
 
-                            <!-- MATERIAL RESOURCES (PDF / PRESENTATION / ARTICLE DETAILS) -->
-                            <div id="moduleMaterialsBox" class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
-                                <h4 class="text-xs font-bold text-ceut-navy uppercase tracking-wider flex items-center gap-2 border-b pb-2 border-slate-200">
-                                    <i class="fa-solid fa-folder-open text-ceut-gold"></i> Recurso / Material de Aprendizaje (PDF / Presentación / Artículo)
-                                </h4>
-                                <div id="materialsContent" class="text-xs text-slate-600 flex flex-wrap items-center justify-between gap-3">
-                                    <!-- Dynamic Resource Display -->
-                                </div>
+                        <!-- MATERIAL RESOURCES (PDF / PRESENTATION / ARTICLE DETAILS) -->
+                        <div id="moduleMaterialsBox" class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
+                            <h4 class="text-xs font-bold text-ceut-navy uppercase tracking-wider flex items-center gap-2 border-b pb-2 border-slate-200">
+                                <i class="fa-solid fa-folder-open text-ceut-gold"></i> Recurso / Material de Aprendizaje (PDF / Presentación / Artículo)
+                            </h4>
+                            <div id="materialsContent" class="text-xs text-slate-600 flex flex-wrap items-center justify-between gap-3">
+                                <!-- Dynamic Resource Display -->
                             </div>
                         </div>
 
@@ -298,7 +273,7 @@
                                 <i class="fa-solid fa-shield-check text-emerald-600 text-base"></i>
                                 <span><strong>Garantía de Asistencia:</strong> Concluye la reproducción completa del video para habilitar las preguntas.</span>
                             </div>
-                            <button onclick="simulateVideoProgress()" id="btnSimulateVideo" class="text-xs px-3.5 py-2 bg-ceut-navy hover:bg-ceut-purple text-white font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow">
+                            <button onclick="window.simulateVideoProgress()" id="btnSimulateVideo" class="text-xs px-3.5 py-2 bg-ceut-navy hover:bg-ceut-purple text-white font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow">
                                 <i class="fa-solid fa-check-double text-ceut-gold"></i> Finalizar Reproducción de Video
                             </button>
                         </div>
@@ -315,7 +290,7 @@
                                 </div>
                             </div>
 
-                            <form id="quizForm" onsubmit="handleQuizSubmit(event)" class="space-y-6">
+                            <form id="quizForm" onsubmit="window.handleQuizSubmit(event)" class="space-y-6">
                                 <div id="quizQuestionsList" class="space-y-6"></div>
 
                                 <button type="submit" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow-md transition-colors flex items-center justify-center gap-2">
@@ -346,7 +321,7 @@
                                 <h4 class="font-bold text-emerald-900 text-sm">¡Curso Finalizado!</h4>
                                 <p class="text-xs text-emerald-700 mt-1">Has concluido los contenidos y la evaluación correspondientes.</p>
                             </div>
-                            <button onclick="generateAndShowCertificate()" class="w-full py-2.5 bg-ceut-gold hover:bg-ceut-goldDark text-ceut-navy font-extrabold text-xs rounded-lg shadow uppercase tracking-wider flex items-center justify-center gap-2">
+                            <button onclick="window.generateAndShowCertificate()" class="w-full py-2.5 bg-ceut-gold hover:bg-ceut-goldDark text-ceut-navy font-extrabold text-xs rounded-lg shadow uppercase tracking-wider flex items-center justify-center gap-2">
                                 <i class="fa-solid fa-certificate"></i> Obtener Mi Constancia Oficial
                             </button>
                         </div>
@@ -374,13 +349,13 @@
             <!-- SUB-TABS ADMIN -->
             <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-6">
                 <div class="flex flex-wrap border-b border-slate-200 gap-2 sm:gap-6">
-                    <button onclick="switchAdminSubTab('users')" id="adminSubBtn-users" class="pb-3 font-bold text-sm text-ceut-navy border-b-2 border-ceut-gold flex items-center gap-2">
+                    <button onclick="window.switchAdminSubTab('users')" id="adminSubBtn-users" class="pb-3 font-bold text-sm text-ceut-navy border-b-2 border-ceut-gold flex items-center gap-2">
                         <i class="fa-solid fa-users-gear text-ceut-gold"></i> Control Total Usuarios & Passwords
                     </button>
-                    <button onclick="switchAdminSubTab('courses')" id="adminSubBtn-courses" class="pb-3 font-medium text-sm text-slate-500 hover:text-ceut-navy flex items-center gap-2">
+                    <button onclick="window.switchAdminSubTab('courses')" id="adminSubBtn-courses" class="pb-3 font-medium text-sm text-slate-500 hover:text-ceut-navy flex items-center gap-2">
                         <i class="fa-solid fa-list-check text-slate-400"></i> Diseñador Integral de Cursos
                     </button>
-                    <button onclick="switchAdminSubTab('certDesign')" id="adminSubBtn-certDesign" class="pb-3 font-medium text-sm text-slate-500 hover:text-ceut-navy flex items-center gap-2">
+                    <button onclick="window.switchAdminSubTab('certDesign')" id="adminSubBtn-certDesign" class="pb-3 font-medium text-sm text-slate-500 hover:text-ceut-navy flex items-center gap-2">
                         <i class="fa-solid fa-certificate text-slate-400"></i> Diseñador de Plantillas & Cajas de Texto
                     </button>
                 </div>
@@ -422,7 +397,7 @@
                             <h3 class="font-bold text-sm text-ceut-navy">Módulo de Diseño Integral de Cursos y Evaluaciones</h3>
                             <p class="text-xs text-slate-500">Crea o edita la portada alusiva, vigencia, recursos PDF, videos y reactivos de evaluación.</p>
                         </div>
-                        <button onclick="toggleNewCourseForm()" class="px-4 py-2.5 bg-ceut-gold hover:bg-ceut-goldDark text-ceut-navy font-black text-xs rounded-xl shadow flex items-center gap-2 uppercase tracking-wider">
+                        <button onclick="window.toggleNewCourseForm()" class="px-4 py-2.5 bg-ceut-gold hover:bg-ceut-goldDark text-ceut-navy font-black text-xs rounded-xl shadow flex items-center gap-2 uppercase tracking-wider">
                             <i class="fa-solid fa-plus-circle text-base"></i> Diseñar Nuevo Curso
                         </button>
                     </div>
@@ -438,7 +413,7 @@
                             </span>
                         </div>
 
-                        <form onsubmit="handleSaveCourse(event)" class="space-y-6">
+                        <form onsubmit="window.handleSaveCourse(event)" class="space-y-6">
                             <!-- 1. GENERALIDADES -->
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
@@ -467,11 +442,11 @@
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
                                     <div>
                                         <span class="text-[11px] font-medium text-slate-600 block mb-1">Adjuntar Archivo de Imagen:</span>
-                                        <input type="file" id="courseImageFileInput" accept="image/*" onchange="handleCourseImageUpload(event)" class="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-ceut-navy file:text-white cursor-pointer">
+                                        <input type="file" id="courseImageFileInput" accept="image/*" onchange="window.handleCourseImageUpload(event)" class="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-ceut-navy file:text-white cursor-pointer">
                                     </div>
                                     <div>
                                         <span class="text-[11px] font-medium text-slate-600 block mb-1">O copiar URL directa de Imagen:</span>
-                                        <input type="url" id="courseImageUrlInput" placeholder="https://ejemplo.com/portada.jpg" oninput="previewCourseImage(this.value)" class="w-full p-2.5 text-xs border border-slate-300 rounded-xl">
+                                        <input type="url" id="courseImageUrlInput" placeholder="https://ejemplo.com/portada.jpg" oninput="window.previewCourseImage(this.value)" class="w-full p-2.5 text-xs border border-slate-300 rounded-xl">
                                     </div>
                                 </div>
                                 <div id="courseImagePreviewBox" class="mt-2 h-32 w-full rounded-xl bg-slate-100 border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden">
@@ -551,17 +526,17 @@
                                             
                                             <!-- Pestañas de selección: Adjuntar vs URL -->
                                             <div class="flex gap-2 border-b border-slate-200 pb-1 text-[11px] font-bold">
-                                                <button type="button" onclick="switchResourceInputMode('file')" id="resModeBtnFile" class="text-ceut-navy border-b-2 border-ceut-gold pb-1 flex items-center gap-1">
+                                                <button type="button" onclick="window.switchResourceInputMode('file')" id="resModeBtnFile" class="text-ceut-navy border-b-2 border-ceut-gold pb-1 flex items-center gap-1">
                                                     <i class="fa-solid fa-paperclip"></i> Adjuntar Archivo
                                                 </button>
-                                                <button type="button" onclick="switchResourceInputMode('url')" id="resModeBtnUrl" class="text-slate-400 hover:text-slate-600 pb-1 flex items-center gap-1">
+                                                <button type="button" onclick="window.switchResourceInputMode('url')" id="resModeBtnUrl" class="text-slate-400 hover:text-slate-600 pb-1 flex items-center gap-1">
                                                     <i class="fa-solid fa-link"></i> Usar URL Enlace
                                                 </button>
                                             </div>
 
                                             <!-- Opción 1: Archivo Adjunto -->
                                             <div id="resInputFileBox">
-                                                <input type="file" id="moduleMaterialFileInput" accept=".pdf,.ppt,.pptx,.doc,.docx" onchange="handleMaterialFileUpload(event)" class="w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-[11px] file:font-bold file:bg-ceut-navy file:text-white cursor-pointer border border-slate-300 rounded-xl p-1">
+                                                <input type="file" id="moduleMaterialFileInput" accept=".pdf,.ppt,.pptx,.doc,.docx" onchange="window.handleMaterialFileUpload(event)" class="w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-[11px] file:font-bold file:bg-ceut-navy file:text-white cursor-pointer border border-slate-300 rounded-xl p-1">
                                             </div>
 
                                             <!-- Opción 2: Dirección URL -->
@@ -593,7 +568,7 @@
                                         <div class="bg-slate-50 p-4 rounded-xl border border-slate-300 space-y-3">
                                             <div class="flex justify-between items-center border-b pb-2 border-slate-200">
                                                 <span id="questionFormTitle" class="text-xs font-bold text-ceut-navy uppercase">Formulario para Crear/Editar Pregunta</span>
-                                                <button type="button" id="btnCancelEditQuestion" onclick="cancelQuestionEdit()" class="hidden text-[10px] font-bold text-red-600 hover:text-red-800 flex items-center gap-1">
+                                                <button type="button" id="btnCancelEditQuestion" onclick="window.cancelQuestionEdit()" class="hidden text-[10px] font-bold text-red-600 hover:text-red-800 flex items-center gap-1">
                                                     <i class="fa-solid fa-xmark"></i> Cancelar Edición
                                                 </button>
                                             </div>
@@ -601,7 +576,7 @@
                                             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                                 <div>
                                                     <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Tipo de Pregunta</label>
-                                                    <select id="questionTypeSelect" onchange="toggleQuestionTypeInputs()" class="w-full p-2.5 text-xs border border-slate-300 rounded-xl font-semibold">
+                                                    <select id="questionTypeSelect" onchange="window.toggleQuestionTypeInputs()" class="w-full p-2.5 text-xs border border-slate-300 rounded-xl font-semibold">
                                                         <option value="multiple">Opción Múltiple (4 Opciones)</option>
                                                         <option value="boolean">Verdadero / Falso</option>
                                                         <option value="reorder">Acomodar Ideas / Orden Lógico</option>
@@ -705,7 +680,7 @@
                                                 <textarea id="moduleFeedbackInput" rows="2" placeholder="Escribe la explicación o retroalimentación que verá el alumno al finalizar..." class="w-full p-2.5 text-xs border border-slate-300 rounded-xl"></textarea>
                                             </div>
 
-                                            <button type="button" id="btnAddQuestionToList" onclick="addOrUpdateQuestionItem()" class="w-full py-2 bg-amber-500 hover:bg-amber-600 text-ceut-navy font-black text-xs rounded-lg transition-colors flex items-center justify-center gap-2 shadow">
+                                            <button type="button" id="btnAddQuestionToList" onclick="window.addOrUpdateQuestionItem()" class="w-full py-2 bg-amber-500 hover:bg-amber-600 text-ceut-navy font-black text-xs rounded-lg transition-colors flex items-center justify-center gap-2 shadow">
                                                 <i class="fa-solid fa-plus-circle"></i> <span id="btnAddQuestionText">+ Agregar Pregunta al Módulo</span>
                                             </button>
                                         </div>
@@ -713,7 +688,7 @@
 
                                     <!-- BOTÓN PARA CONSOLIDAR Y AGREGAR SIGUIENTE MÓDULO -->
                                     <div class="pt-3 border-t border-slate-200 flex justify-end">
-                                        <button type="button" onclick="saveCurrentModuleAndPrepareNext()" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow flex items-center gap-2 transition-all">
+                                        <button type="button" onclick="window.saveCurrentModuleAndPrepareNext()" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow flex items-center gap-2 transition-all">
                                             <i class="fa-solid fa-circle-plus text-amber-300"></i>
                                             <span>Guardar Módulo y Agregar Otro Módulo</span>
                                         </button>
@@ -722,7 +697,7 @@
                             </div>
 
                             <div class="flex justify-end gap-3 pt-2">
-                                <button type="button" onclick="toggleNewCourseForm()" class="px-5 py-2.5 bg-slate-200 text-slate-700 text-xs font-bold rounded-xl hover:bg-slate-300">Cancelar</button>
+                                <button type="button" onclick="window.toggleNewCourseForm()" class="px-5 py-2.5 bg-slate-200 text-slate-700 text-xs font-bold rounded-xl hover:bg-slate-300">Cancelar</button>
                                 <button type="submit" class="px-6 py-2.5 bg-ceut-navy hover:bg-ceut-purple text-white text-xs font-black rounded-xl shadow-lg flex items-center gap-2">
                                     <i class="fa-solid fa-floppy-disk text-ceut-gold"></i> Guardar y Publicar Curso
                                 </button>
@@ -749,11 +724,11 @@
                                 <div class="bg-white p-3 rounded-xl border border-slate-200 space-y-2">
                                     <label class="block text-[11px] font-bold text-ceut-navy uppercase">Color del Texto de la Constancia</label>
                                     <div class="flex items-center gap-3">
-                                        <input type="color" id="certTextColorPicker" value="#FFFFFF" onchange="changeCertTextColor(this.value)" class="w-9 h-9 rounded-lg border border-slate-300 cursor-pointer">
+                                        <input type="color" id="certTextColorPicker" value="#FFFFFF" onchange="window.changeCertTextColor(this.value)" class="w-9 h-9 rounded-lg border border-slate-300 cursor-pointer">
                                         <div class="flex flex-wrap gap-1">
-                                            <button onclick="changeCertTextColor('#FFFFFF')" class="px-2.5 py-1 bg-slate-900 text-white font-bold text-[10px] rounded border border-slate-700">Blanco (#FFF)</button>
-                                            <button onclick="changeCertTextColor('#F5B000')" class="px-2.5 py-1 bg-amber-400 text-ceut-navy font-bold text-[10px] rounded">Dorado CEUT</button>
-                                            <button onclick="changeCertTextColor('#1B1446')" class="px-2.5 py-1 bg-ceut-navy text-white font-bold text-[10px] rounded">Azul CEUT</button>
+                                            <button onclick="window.changeCertTextColor('#FFFFFF')" class="px-2.5 py-1 bg-slate-900 text-white font-bold text-[10px] rounded border border-slate-700">Blanco (#FFF)</button>
+                                            <button onclick="window.changeCertTextColor('#F5B000')" class="px-2.5 py-1 bg-amber-400 text-ceut-navy font-bold text-[10px] rounded">Dorado CEUT</button>
+                                            <button onclick="window.changeCertTextColor('#1B1446')" class="px-2.5 py-1 bg-ceut-navy text-white font-bold text-[10px] rounded">Azul CEUT</button>
                                         </div>
                                     </div>
                                 </div>
@@ -764,18 +739,18 @@
 
                                     <div>
                                         <label class="block text-[11px] font-bold text-slate-600 mb-0.5">Nombre del Participante:</label>
-                                        <input type="text" id="certInputName" value="Dr. Roberto Carlos Mendoza" oninput="updateCertificatePreview()" class="w-full p-2 border border-slate-300 rounded-lg font-semibold">
+                                        <input type="text" id="certInputName" value="Dr. Roberto Carlos Mendoza" oninput="window.updateCertificatePreview()" class="w-full p-2 border border-slate-300 rounded-lg font-semibold">
                                     </div>
 
                                     <div>
                                         <label class="block text-[11px] font-bold text-slate-600 mb-0.5">Leyenda del Curso / Motivo:</label>
-                                        <textarea id="certInputReason" rows="3" oninput="updateCertificatePreview()" class="w-full p-2 border border-slate-300 rounded-lg text-xs">por haber concluido satisfactoriamente la capacitación psicopedagógica institucional del Programa CRECE CEUT.</textarea>
+                                        <textarea id="certInputReason" rows="3" oninput="window.updateCertificatePreview()" class="w-full p-2 border border-slate-300 rounded-lg text-xs">por haber concluido satisfactoriamente la capacitación psicopedagógica institucional del Programa CRECE CEUT.</textarea>
                                     </div>
 
                                     <div class="grid grid-cols-2 gap-2">
                                         <div>
                                             <label class="block text-[11px] font-bold text-slate-600 mb-0.5">Perfil</label>
-                                            <select id="certInputRole" onchange="updateCertificatePreview()" class="w-full p-2 border border-slate-300 rounded-lg font-bold">
+                                            <select id="certInputRole" onchange="window.updateCertificatePreview()" class="w-full p-2 border border-slate-300 rounded-lg font-bold">
                                                 <option value="DOC">DOC (Docente)</option>
                                                 <option value="AUL">AUL (Alumno)</option>
                                                 <option value="ADM">ADM (Administrativo)</option>
@@ -783,13 +758,13 @@
                                         </div>
                                         <div>
                                             <label class="block text-[11px] font-bold text-slate-600 mb-0.5">No. Curso</label>
-                                            <input type="text" id="certInputCourseNum" value="01" oninput="updateCertificatePreview()" class="w-full p-2 border border-slate-300 rounded-lg font-mono font-bold">
+                                            <input type="text" id="certInputCourseNum" value="01" oninput="window.updateCertificatePreview()" class="w-full p-2 border border-slate-300 rounded-lg font-mono font-bold">
                                         </div>
                                     </div>
 
                                     <div>
                                         <label class="block text-[11px] font-bold text-slate-600 mb-0.5">Fecha de Término Registrada:</label>
-                                        <input type="date" id="certInputDate" onchange="updateCertificatePreview()" class="w-full p-2 border border-slate-300 rounded-lg">
+                                        <input type="date" id="certInputDate" onchange="window.updateCertificatePreview()" class="w-full p-2 border border-slate-300 rounded-lg">
                                     </div>
                                 </div>
 
@@ -810,13 +785,13 @@
                                 <img id="certBgImg" class="absolute inset-0 w-full h-full object-cover z-0" src="https://lh3.googleusercontent.com/d/1PR6NY9ILYca_9LwI-0mJZzuP_aXQgG1O" alt="Plantilla Oficial Constancia CEUT" onerror="this.onerror=null; this.src='https://drive.google.com/thumbnail?id=1PR6NY9ILYca_9LwI-0mJZzuP_aXQgG1O&sz=w1000';">
 
                                 <!-- RECUADRO 1: FOLIO OFICIAL CEUT -->
-                                <div id="rubricBoxFolio" class="rubric-box-wrapper z-10" style="top: 10%; right: 5%; width: 220px;" onmousedown="initDrag(event, 'rubricBoxFolio')">
+                                <div id="rubricBoxFolio" class="rubric-box-wrapper z-10" style="top: 10%; right: 5%; width: 220px;" onmousedown="window.initDrag(event, 'rubricBoxFolio')">
                                     <span class="rubric-label-tag">Recuadro: Folio Oficial</span>
                                     <span id="certFolioCode" class="cert-text-white text-xs font-mono font-black block text-center py-1">CEUT_DOC_01_001</span>
                                 </div>
 
                                 <!-- RECUADRO 2: NOMBRE DEL PARTICIPANTE -->
-                                <div id="rubricBoxName" class="rubric-box-wrapper z-10" style="top: 42%; left: 10%; width: 80%; text-align: center;" onmousedown="initDrag(event, 'rubricBoxName')">
+                                <div id="rubricBoxName" class="rubric-box-wrapper z-10" style="top: 42%; left: 10%; width: 80%; text-align: center;" onmousedown="window.initDrag(event, 'rubricBoxName')">
                                     <span class="rubric-label-tag">Recuadro: Nombre del Participante</span>
                                     <h3 id="certNameDisplay" class="cert-text-white text-lg sm:text-2xl font-black underline decoration-ceut-gold underline-offset-4">
                                         Dr. Roberto Carlos Mendoza
@@ -824,7 +799,7 @@
                                 </div>
 
                                 <!-- RECUADRO 3: LEYENDA DEL CURSO / MOTIVO -->
-                                <div id="rubricBoxReason" class="rubric-box-wrapper z-10" style="top: 60%; left: 10%; width: 80%; text-align: center;" onmousedown="initDrag(event, 'rubricBoxReason')">
+                                <div id="rubricBoxReason" class="rubric-box-wrapper z-10" style="top: 60%; left: 10%; width: 80%; text-align: center;" onmousedown="window.initDrag(event, 'rubricBoxReason')">
                                     <span class="rubric-label-tag">Recuadro: Leyenda del Curso</span>
                                     <p id="certReasonDisplay" class="cert-text-white text-xs sm:text-sm font-semibold leading-relaxed">
                                         por haber concluido satisfactoriamente la capacitación psicopedagógica institucional del Programa CRECE CEUT.
@@ -832,7 +807,7 @@
                                 </div>
 
                                 <!-- RECUADRO 4: FECHA DE EXPEDICIÓN -->
-                                <div id="rubricBoxDate" class="rubric-box-wrapper z-10" style="bottom: 8%; left: 5%; width: 220px;" onmousedown="initDrag(event, 'rubricBoxDate')">
+                                <div id="rubricBoxDate" class="rubric-box-wrapper z-10" style="bottom: 8%; left: 5%; width: 220px;" onmousedown="window.initDrag(event, 'rubricBoxDate')">
                                     <span class="rubric-label-tag">Recuadro: Fecha</span>
                                     <p class="cert-text-white text-[11px] sm:text-xs font-bold text-center py-0.5">
                                         Expedido el: <span id="certDateDisplay">--/--/----</span>
@@ -857,12 +832,12 @@
                     </div>
                     <h3 class="font-bold text-ceut-navy text-base">Inscripción / Acceso a Aula Virtual</h3>
                 </div>
-                <button onclick="closeRegistrationModal()" class="text-slate-400 hover:text-slate-600 text-lg">
+                <button onclick="window.closeRegistrationModal()" class="text-slate-400 hover:text-slate-600 text-lg">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
 
-            <form id="enrollmentForm" onsubmit="handleUserRegistration(event)" class="space-y-4">
+            <form id="enrollmentForm" onsubmit="window.handleUserRegistration(event)" class="space-y-4">
                 <p class="text-xs text-slate-500">Selecciona tu grado académico, ingresa tu nombre completo y define tus datos de acceso.</p>
                 
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -921,12 +896,12 @@
                 <p class="text-xs text-slate-500 mt-1">Introduce la contraseña de administración institucional.</p>
             </div>
 
-            <form onsubmit="verifyAdminPass(event)" class="space-y-3">
+            <form onsubmit="window.verifyAdminPass(event)" class="space-y-3">
                 <input type="password" id="adminPassInput" placeholder="Contraseña de acceso" required class="w-full p-2.5 text-center text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-ceut-navy focus:outline-none">
                 <p id="adminAuthErr" class="text-xs text-red-600 font-medium hidden">Contraseña incorrecta. Inténtalo de nuevo.</p>
 
                 <div class="flex gap-2 pt-2">
-                    <button type="button" onclick="closeAdminAuthModal()" class="flex-1 py-2 bg-slate-200 text-slate-700 text-xs font-bold rounded-lg hover:bg-slate-300">Cancelar</button>
+                    <button type="button" onclick="window.closeAdminAuthModal()" class="flex-1 py-2 bg-slate-200 text-slate-700 text-xs font-bold rounded-lg hover:bg-slate-300">Cancelar</button>
                     <button type="submit" class="flex-1 py-2 bg-ceut-navy text-white text-xs font-bold rounded-lg hover:bg-slate-800 shadow">Acceder</button>
                 </div>
             </form>

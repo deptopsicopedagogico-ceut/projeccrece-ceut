@@ -175,19 +175,19 @@
 
         <!-- MAIN NAVIGATION TABS -->
         <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-1.5 flex flex-wrap gap-2">
-            <button onclick="selectCategoryTab('DOC')" id="nav-btn-DOC" class="main-nav-btn flex-1 min-w-[140px] py-3 px-4 rounded-lg font-bold text-sm flex items-center justify-center space-x-2 bg-ceut-navy text-white transition-all shadow-sm hover:-translate-y-0.5">
+            <button onclick="window.selectCategoryTab('DOC')" id="nav-btn-DOC" class="main-nav-btn flex-1 min-w-[140px] py-3 px-4 rounded-lg font-bold text-sm flex items-center justify-center space-x-2 bg-ceut-navy text-white transition-all shadow-sm hover:-translate-y-0.5">
                 <i class="fa-solid fa-chalkboard-user text-ceut-gold"></i>
                 <span>Cursos Docentes</span>
             </button>
-            <button onclick="selectCategoryTab('AUL')" id="nav-btn-AUL" class="main-nav-btn flex-1 min-w-[140px] py-3 px-4 rounded-lg font-medium text-sm flex items-center justify-center space-x-2 text-slate-600 hover:bg-slate-100 transition-all hover:-translate-y-0.5">
+            <button onclick="window.selectCategoryTab('AUL')" id="nav-btn-AUL" class="main-nav-btn flex-1 min-w-[140px] py-3 px-4 rounded-lg font-medium text-sm flex items-center justify-center space-x-2 text-slate-600 hover:bg-slate-100 transition-all hover:-translate-y-0.5">
                 <i class="fa-solid fa-user-graduate"></i>
                 <span>Cursos Alumnos</span>
             </button>
-            <button onclick="selectCategoryTab('ADM')" id="nav-btn-ADM" class="main-nav-btn flex-1 min-w-[140px] py-3 px-4 rounded-lg font-medium text-sm flex items-center justify-center space-x-2 text-slate-600 hover:bg-slate-100 transition-all hover:-translate-y-0.5">
+            <button onclick="window.selectCategoryTab('ADM')" id="nav-btn-ADM" class="main-nav-btn flex-1 min-w-[140px] py-3 px-4 rounded-lg font-medium text-sm flex items-center justify-center space-x-2 text-slate-600 hover:bg-slate-100 transition-all hover:-translate-y-0.5">
                 <i class="fa-solid fa-user-gear"></i>
                 <span>Cursos Administrativos</span>
             </button>
-            <button onclick="openAdminPortal()" id="nav-btn-ADMIN" class="main-nav-btn border-l-2 border-slate-200 flex-1 min-w-[140px] py-3 px-4 rounded-lg font-bold text-sm flex items-center justify-center space-x-2 text-ceut-purple hover:bg-amber-50 transition-all hover:-translate-y-0.5">
+            <button onclick="window.openAdminPortal()" id="nav-btn-ADMIN" class="main-nav-btn border-l-2 border-slate-200 flex-1 min-w-[140px] py-3 px-4 rounded-lg font-bold text-sm flex items-center justify-center space-x-2 text-ceut-purple hover:bg-amber-50 transition-all hover:-translate-y-0.5">
                 <i class="fa-solid fa-sliders text-ceut-gold"></i>
                 <span>Portal Administrativo</span>
             </button>
@@ -1092,20 +1092,18 @@
 
     <script>
         // GLOBAL DATA & INITIAL STATE
-        let coursesData = [];
-        let registeredUsers = [];
-        let currentTab = 'DOC';
-        let currentCourse = null;
-        let currentModuleIndex = 0;
-        let activeSelectedCourseForEnrollment = null;
-        let isAdminLoggedIn = false;
+        window.coursesData = window.coursesData || [];
+        window.registeredUsers = window.registeredUsers || [];
+        window.currentTab = 'DOC';
+        window.currentCourse = null;
+        window.currentModuleIndex = 0;
+        window.activeSelectedCourseForEnrollment = null;
+        window.isAdminLoggedIn = false;
 
         // Temporary builder state
-        let currentCourseModules = [];
-        let currentEditingQuestions = [];
-        let editingModuleIndex = -1;
-        let editingQuestionIndex = -1;
-        let activeResourceInputMode = 'file';
+        window.currentCourseModules = [];
+        window.currentEditingQuestions = [];
+        window.activeResourceInputMode = 'file';
 
         // Certificate dragging state
         let isDragging = false;
@@ -1113,21 +1111,10 @@
         let dragOffsetX = 0;
         let dragOffsetY = 0;
 
-        // INITIALIZATION ON LOAD
-        window.onload = function() {
-            selectCategoryTab('DOC');
-            if (window.renderCatalog) window.renderCatalog();
-            if (window.renderAdminCoursesGrid) window.renderAdminCoursesGrid();
-            if (window.renderUsersMasterTable) window.renderUsersMasterTable();
-        };
-
-        // -------------------------------------------------------------
         // CATEGORY & TAB NAVIGATION
-        // -------------------------------------------------------------
         window.selectCategoryTab = function(category) {
-            currentTab = category;
+            window.currentTab = category;
             
-            // Update active styles on main navigation buttons
             const categories = ['DOC', 'AUL', 'ADM'];
             categories.forEach(cat => {
                 const btn = document.getElementById(`nav-btn-${cat}`);
@@ -1142,12 +1129,14 @@
                 }
             });
 
-            // Show Catalog section and hide player/admin
-            document.getElementById('section-catalog').classList.remove('hidden');
-            document.getElementById('section-player').classList.add('hidden');
-            document.getElementById('section-admin').classList.add('hidden');
+            const secCat = document.getElementById('section-catalog');
+            const secPlay = document.getElementById('section-player');
+            const secAdm = document.getElementById('section-admin');
 
-            // Update section title and badge
+            if (secCat) secCat.classList.remove('hidden');
+            if (secPlay) secPlay.classList.add('hidden');
+            if (secAdm) secAdm.classList.add('hidden');
+
             const titleHeader = document.getElementById('catalogTitleHeader');
             const subHeader = document.getElementById('catalogSubHeader');
             const badge = document.getElementById('activeCategoryBadge');
@@ -1166,738 +1155,56 @@
                 if (badge) badge.innerText = "CATEGORÍA: ADMINISTRATIVOS (ADM)";
             }
 
-            renderCatalog();
+            if (window.renderCatalog) window.renderCatalog();
         };
 
-        // -------------------------------------------------------------
-        // RENDER CATALOG COURSES
-        // -------------------------------------------------------------
-        window.renderCatalog = function() {
-            const grid = document.getElementById('courseGrid');
-            if (!grid) return;
-
-            const filtered = coursesData.filter(c => c.category === currentTab);
-
-            if (filtered.length === 0) {
-                grid.innerHTML = `
-                    <div class="col-span-full py-12 text-center bg-white rounded-xl border border-slate-200 p-8 space-y-3">
-                        <div class="w-16 h-16 bg-amber-50 text-ceut-gold border border-amber-200 rounded-full flex items-center justify-center mx-auto text-2xl">
-                            <i class="fa-solid fa-folder-open"></i>
-                        </div>
-                        <h3 class="text-base font-bold text-ceut-navy">No hay cursos disponibles aún</h3>
-                        <p class="text-xs text-slate-500 max-w-md mx-auto">Ingresa al <strong>Portal Administrativo</strong> con la clave de acceso para diseñar y publicar cursos en esta categoría.</p>
-                        <button onclick="openAdminPortal()" class="mt-2 px-4 py-2 bg-ceut-navy text-white text-xs font-bold rounded-lg shadow hover:bg-ceut-purple transition-colors">
-                            Ir al Portal Administrativo
-                        </button>
-                    </div>
-                `;
-                return;
-            }
-
-            grid.innerHTML = filtered.map(course => `
-                <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
-                    <div>
-                        <div class="h-44 bg-slate-200 relative overflow-hidden">
-                            <img src="${course.imageUrl || 'https://placehold.co/600x400/1B1446/F5B000?text=CEUT+Curso'}" 
-                                 alt="${course.title}" 
-                                 class="w-full h-full object-cover"
-                                 onerror="this.onerror=null; this.src='https://placehold.co/600x400/1B1446/F5B000?text=CEUT+Curso';">
-                            <span class="absolute top-3 left-3 bg-ceut-navy text-ceut-gold text-[10px] font-mono font-bold px-2.5 py-1 rounded shadow">
-                                ${course.folio || 'CEUT_' + course.category + '_' + course.code}
-                            </span>
-                        </div>
-                        <div class="p-5 space-y-3">
-                            <h3 class="font-bold text-ceut-navy text-base leading-snug">${course.title}</h3>
-                            <p class="text-xs text-slate-600 line-clamp-3">${course.description || 'Sin descripción disponible.'}</p>
-                            
-                            <div class="pt-2 border-t border-slate-100 text-[11px] text-slate-500 space-y-1">
-                                <div><i class="fa-regular fa-calendar text-ceut-gold mr-1.5"></i> Vigencia: <strong>${course.startDate || '--'} al ${course.endDate || '--'}</strong></div>
-                                <div><i class="fa-regular fa-clock text-ceut-gold mr-1.5"></i> Horario: <strong>${course.startTime || '--'} a ${course.endTime || '--'}</strong></div>
-                                <div><i class="fa-solid fa-layer-group text-ceut-gold mr-1.5"></i> Módulos: <strong>${course.modules ? course.modules.length : 0} Módulo(s)</strong></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="p-5 pt-0">
-                        <button onclick="openRegistrationModal('${course.id}')" class="w-full py-2.5 bg-ceut-navy hover:bg-ceut-purple text-white text-xs font-bold rounded-lg shadow transition-colors flex items-center justify-center gap-2">
-                            <i class="fa-solid fa-user-plus text-ceut-gold"></i>
-                            <span>Inscribirme y Entrar al Aula</span>
-                        </button>
-                    </div>
-                </div>
-            `).join('');
-        };
-
-        // -------------------------------------------------------------
-        // REGISTRATION / ENROLLMENT MODAL
-        // -------------------------------------------------------------
-        window.openRegistrationModal = function(courseId) {
-            const course = coursesData.find(c => c.id === courseId);
-            if (!course) return;
-
-            activeSelectedCourseForEnrollment = course;
-
-            document.getElementById('regCourseTitle').innerText = course.title;
-            document.getElementById('regCourseFolio').innerText = course.folio || `CEUT_${course.category}_${course.code}`;
-
-            document.getElementById('registrationModal').classList.remove('hidden');
-        };
-
-        window.closeRegistrationModal = function() {
-            document.getElementById('registrationModal').classList.add('hidden');
-            activeSelectedCourseForEnrollment = null;
-        };
-
-        window.handleUserRegistration = function(event) {
-            event.preventDefault();
-            if (!activeSelectedCourseForEnrollment) return;
-
-            const title = document.getElementById('regAcademicTitle').value;
-            const fullName = document.getElementById('regFullName').value.trim();
-            const email = document.getElementById('regEmail').value.trim();
-            const password = document.getElementById('regPassword').value;
-
-            const nameWithTitle = title ? `${title} ${fullName}` : fullName;
-
-            const newUser = {
-                id: 'usr_' + Date.now(),
-                name: nameWithTitle,
-                email: email,
-                password: password,
-                category: activeSelectedCourseForEnrollment.category,
-                courseId: activeSelectedCourseForEnrollment.id,
-                courseFolio: activeSelectedCourseForEnrollment.folio || `CEUT_${activeSelectedCourseForEnrollment.category}_${activeSelectedCourseForEnrollment.code}`,
-                progress: 0,
-                completedModules: []
-            };
-
-            registeredUsers.push(newUser);
-            if (window.saveUserToFirestore) window.saveUserToFirestore(newUser);
-
-            closeRegistrationModal();
-            openCoursePlayer(activeSelectedCourseForEnrollment, newUser);
-        };
-
-        // -------------------------------------------------------------
-        // COURSE PLAYER LOGIC
-        // -------------------------------------------------------------
-        window.openCoursePlayer = function(course, user) {
-            currentCourse = course;
-            currentModuleIndex = 0;
-
-            document.getElementById('section-catalog').classList.add('hidden');
-            document.getElementById('section-admin').classList.add('hidden');
-            document.getElementById('section-player').classList.remove('hidden');
-
-            document.getElementById('playerCourseTitle').innerText = course.title;
-            document.getElementById('playerCourseFolio').innerText = course.folio || `CEUT_${course.category}_${course.code}`;
-            document.getElementById('playerCourseDates').innerText = `${course.startDate || '--'} al ${course.endDate || '--'}`;
-            document.getElementById('playerCourseTimes').innerText = `${course.startTime || '--'} a ${course.endTime || '--'}`;
-
-            renderPlayerModule();
-            renderModulesSidebar();
-        };
-
-        window.renderPlayerModule = function() {
-            if (!currentCourse || !currentCourse.modules || currentCourse.modules.length === 0) return;
-
-            const module = currentCourse.modules[currentModuleIndex];
-            document.getElementById('currentModuleName').innerText = module.title || `Módulo ${currentModuleIndex + 1}`;
-            
-            // Video display setup
-            const youtubeIframe = document.getElementById('youtubeIframe');
-            const driveIframe = document.getElementById('driveIframe');
-            const simPlayer = document.getElementById('simulatedPlayer');
-            const docIframe = document.getElementById('documentIframe');
-
-            youtubeIframe.classList.add('hidden');
-            driveIframe.classList.add('hidden');
-            simPlayer.classList.add('hidden');
-            docIframe.classList.add('hidden');
-
-            if (module.videoUrl) {
-                if (module.videoUrl.includes('youtube.com') || module.videoUrl.includes('youtu.be')) {
-                    let embedUrl = module.videoUrl;
-                    if (module.videoUrl.includes('watch?v=')) {
-                        embedUrl = module.videoUrl.replace('watch?v=', 'embed/');
-                    }
-                    youtubeIframe.src = embedUrl;
-                    youtubeIframe.classList.remove('hidden');
-                } else if (module.videoUrl.includes('drive.google.com')) {
-                    driveIframe.src = module.videoUrl;
-                    driveIframe.classList.remove('hidden');
-                } else {
-                    simPlayer.classList.remove('hidden');
-                    document.getElementById('simulatedTitle').innerText = module.title;
-                }
-            } else {
-                simPlayer.classList.remove('hidden');
-                document.getElementById('simulatedTitle').innerText = module.title;
-            }
-
-            // Materials section
-            const materialsContent = document.getElementById('materialsContent');
-            if (module.materialUrl) {
-                materialsContent.innerHTML = `
-                    <div class="flex items-center gap-2">
-                        <i class="fa-solid fa-file-pdf text-red-600 text-lg"></i>
-                        <span class="font-medium text-slate-700">Material Didáctico Adjunto / Presentación</span>
-                    </div>
-                    <a href="${module.materialUrl}" target="_blank" class="px-3 py-1.5 bg-ceut-navy text-white font-bold rounded-lg hover:bg-ceut-purple transition-colors flex items-center gap-1.5">
-                        <i class="fa-solid fa-download text-ceut-gold"></i> Abrir Recurso
-                    </a>
-                `;
-            } else {
-                materialsContent.innerHTML = `<span class="text-slate-400 italic">No hay archivos adjuntos adicionales para este módulo.</span>`;
-            }
-
-            // Hide evaluation until video is done
-            document.getElementById('evaluationContainer').classList.add('hidden');
-        };
-
-        window.simulateVideoProgress = function() {
-            document.getElementById('evaluationContainer').classList.remove('hidden');
-            renderModuleQuestions();
-        };
-
-        window.renderModuleQuestions = function() {
-            const list = document.getElementById('quizQuestionsList');
-            if (!list || !currentCourse || !currentCourse.modules) return;
-
-            const module = currentCourse.modules[currentModuleIndex];
-            const questions = module.questions || [];
-
-            if (questions.length === 0) {
-                list.innerHTML = `<div class="p-4 bg-slate-50 border rounded-lg text-slate-500 text-xs text-center">Este módulo no cuenta con reactivos de evaluación requeridos. Puedes continuar al siguiente módulo.</div>`;
-                return;
-            }
-
-            list.innerHTML = questions.map((q, idx) => {
-                if (q.type === 'multiple') {
-                    return `
-                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-                            <span class="font-bold text-xs text-ceut-navy uppercase block">Pregunta ${idx + 1}: ${q.question}</span>
-                            <div class="space-y-1.5">
-                                ${(q.options || []).map((opt, oIdx) => `
-                                    <label class="flex items-center gap-2 p-2 bg-white rounded-lg border border-slate-200 text-xs font-medium text-slate-700 cursor-pointer hover:bg-amber-50">
-                                        <input type="radio" name="q_${idx}" value="${oIdx}" class="text-ceut-navy">
-                                        <span>${opt}</span>
-                                    </label>
-                                `).join('')}
-                            </div>
-                        </div>
-                    `;
-                } else if (q.type === 'boolean') {
-                    return `
-                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-                            <span class="font-bold text-xs text-ceut-navy uppercase block">Pregunta ${idx + 1}: ${q.question}</span>
-                            <div class="flex gap-4">
-                                <label class="flex items-center gap-2 p-2 bg-white rounded-lg border border-slate-200 text-xs font-medium text-slate-700 cursor-pointer hover:bg-amber-50 flex-1">
-                                    <input type="radio" name="q_${idx}" value="true" class="text-ceut-navy">
-                                    <span>Verdadero</span>
-                                </label>
-                                <label class="flex items-center gap-2 p-2 bg-white rounded-lg border border-slate-200 text-xs font-medium text-slate-700 cursor-pointer hover:bg-amber-50 flex-1">
-                                    <input type="radio" name="q_${idx}" value="false" class="text-ceut-navy">
-                                    <span>Falso</span>
-                                </label>
-                            </div>
-                        </div>
-                    `;
-                } else if (q.type === 'reorder') {
-                    return `
-                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-                            <span class="font-bold text-xs text-ceut-navy uppercase block">Pregunta ${idx + 1}: ${q.question} (Acomoda la secuencia lógica)</span>
-                            <div class="grid grid-cols-1 gap-2">
-                                ${(q.steps || []).map((step, sIdx) => `
-                                    <div class="p-2 bg-white rounded-lg border border-slate-200 text-xs font-medium text-slate-700">
-                                        Paso ${sIdx + 1}: ${step}
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
-                    `;
-                }
-                return '';
-            }).join('');
-        };
-
-        window.handleQuizSubmit = function(event) {
-            event.preventDefault();
-            alert("Evaluación completada con éxito. ¡Has acreditado este módulo!");
-
-            if (currentCourse && currentCourse.modules) {
-                if (currentModuleIndex < currentCourse.modules.length - 1) {
-                    currentModuleIndex++;
-                    renderPlayerModule();
-                    renderModulesSidebar();
-                } else {
-                    document.getElementById('courseCompletionCard').classList.remove('hidden');
-                    document.getElementById('playerProgressPercentage').innerText = "100%";
-                }
-            }
-        };
-
-        window.renderModulesSidebar = function() {
-            const list = document.getElementById('modulesSidebarList');
-            if (!list || !currentCourse || !currentCourse.modules) return;
-
-            document.getElementById('moduleCounter').innerText = `${currentModuleIndex + 1}/${currentCourse.modules.length}`;
-
-            list.innerHTML = currentCourse.modules.map((m, idx) => `
-                <button onclick="switchPlayerModule(${idx})" class="w-full text-left p-3 rounded-xl border transition-all text-xs font-bold flex items-center justify-between ${idx === currentModuleIndex ? 'bg-ceut-navy text-white border-ceut-gold' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'}">
-                    <span>${m.title || 'Módulo ' + (idx + 1)}</span>
-                    <i class="fa-solid ${idx === currentModuleIndex ? 'fa-circle-play text-ceut-gold' : 'fa-circle text-slate-300'}"></i>
-                </button>
-            `).join('');
-        };
-
-        window.switchPlayerModule = function(idx) {
-            currentModuleIndex = idx;
-            renderPlayerModule();
-            renderModulesSidebar();
-        };
-
-        window.switchPlayerMediaTab = function(type) {
-            const btnVideo = document.getElementById('tabBtnVideo');
-            const btnDoc = document.getElementById('tabBtnDocument');
-            const videoBox = document.getElementById('videoContainer');
-
-            if (type === 'video') {
-                btnVideo.className = "px-3 py-1.5 rounded-lg text-xs font-bold bg-ceut-navy text-white flex items-center gap-1.5 transition-all shadow-sm";
-                btnDoc.className = "px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-100 flex items-center gap-1.5 transition-all";
-                videoBox.classList.remove('hidden');
-            } else {
-                btnDoc.className = "px-3 py-1.5 rounded-lg text-xs font-bold bg-ceut-navy text-white flex items-center gap-1.5 transition-all shadow-sm";
-                btnVideo.className = "px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-100 flex items-center gap-1.5 transition-all";
-            }
-        };
-
-        // -------------------------------------------------------------
-        // ADMIN PORTAL & AUTHENTICATION
-        // -------------------------------------------------------------
+        // ADMIN PORTAL ACCESS
         window.openAdminPortal = function() {
-            if (isAdminLoggedIn) {
-                showAdminView();
+            if (window.isAdminLoggedIn) {
+                window.showAdminView();
             } else {
-                document.getElementById('adminAuthModal').classList.remove('hidden');
+                const modal = document.getElementById('adminAuthModal');
+                if (modal) modal.classList.remove('hidden');
             }
         };
 
         window.closeAdminAuthModal = function() {
-            document.getElementById('adminAuthModal').classList.add('hidden');
-            document.getElementById('adminAuthErr').classList.add('hidden');
+            const modal = document.getElementById('adminAuthModal');
+            if (modal) modal.classList.add('hidden');
+            const err = document.getElementById('adminAuthErr');
+            if (err) err.classList.add('hidden');
         };
 
         window.verifyAdminPass = function(event) {
-            event.preventDefault();
+            if (event) event.preventDefault();
             const pass = document.getElementById('adminPassInput').value;
             if (pass === 'jcas1015') {
-                isAdminLoggedIn = true;
-                closeAdminAuthModal();
-                showAdminView();
+                window.isAdminLoggedIn = true;
+                window.closeAdminAuthModal();
+                window.showAdminView();
             } else {
-                document.getElementById('adminAuthErr').classList.remove('hidden');
+                const err = document.getElementById('adminAuthErr');
+                if (err) err.classList.remove('hidden');
             }
         };
 
-        function showAdminView() {
-            document.getElementById('section-catalog').classList.add('hidden');
-            document.getElementById('section-player').classList.add('hidden');
-            document.getElementById('section-admin').classList.remove('hidden');
+        window.showAdminView = function() {
+            const secCat = document.getElementById('section-catalog');
+            const secPlay = document.getElementById('section-player');
+            const secAdm = document.getElementById('section-admin');
 
-            renderUsersMasterTable();
-            renderAdminCoursesGrid();
-        }
+            if (secCat) secCat.classList.add('hidden');
+            if (secPlay) secPlay.classList.add('hidden');
+            if (secAdm) secAdm.classList.remove('hidden');
 
-        window.switchAdminSubTab = function(sub) {
-            const tabs = ['users', 'courses', 'certDesign'];
-            tabs.forEach(t => {
-                const btn = document.getElementById(`adminSubBtn-${t}`);
-                const view = document.getElementById(`adminSubView-${t}`);
-                if (btn && view) {
-                    if (t === sub) {
-                        btn.className = "pb-3 font-bold text-sm text-ceut-navy border-b-2 border-ceut-gold flex items-center gap-2";
-                        view.classList.remove('hidden');
-                    } else {
-                        btn.className = "pb-3 font-medium text-sm text-slate-500 hover:text-ceut-navy flex items-center gap-2";
-                        view.classList.add('hidden');
-                    }
-                }
-            });
+            if (window.renderUsersMasterTable) window.renderUsersMasterTable();
+            if (window.renderAdminCoursesGrid) window.renderAdminCoursesGrid();
         };
 
-        // -------------------------------------------------------------
-        // ADMIN: USERS TABLE
-        // -------------------------------------------------------------
-        window.renderUsersMasterTable = function() {
-            const tbody = document.getElementById('usersMasterTableBody');
-            const badge = document.getElementById('totalUsersBadge');
-            if (!tbody) return;
-
-            if (badge) badge.innerText = `${registeredUsers.length} Registrados`;
-
-            if (registeredUsers.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-400 italic">No hay usuarios registrados en el sistema.</td></tr>`;
-                return;
-            }
-
-            tbody.innerHTML = registeredUsers.map(u => `
-                <tr class="hover:bg-slate-50 border-b border-slate-100">
-                    <td class="p-3 font-bold text-ceut-navy">${u.name}</td>
-                    <td class="p-3 font-mono">${u.email}</td>
-                    <td class="p-3"><span class="px-2 py-0.5 bg-slate-100 rounded text-[10px] font-bold">${u.category}</span></td>
-                    <td class="p-3 font-mono text-slate-600">${u.password}</td>
-                    <td class="p-3 font-mono font-bold text-ceut-gold">${u.courseFolio}</td>
-                    <td class="p-3 font-bold text-emerald-600">${u.progress || 0}%</td>
-                    <td class="p-3 text-center">
-                        <button onclick="deleteUser('${u.id}')" class="text-red-600 hover:text-red-800 font-bold text-xs">
-                            <i class="fa-solid fa-trash"></i>
-                        </button>
-                    </td>
-                </tr>
-            `).join('');
-        };
-
-        window.deleteUser = function(userId) {
-            registeredUsers = registeredUsers.filter(u => u.id !== userId);
-            renderUsersMasterTable();
-        };
-
-        // -------------------------------------------------------------
-        // ADMIN: COURSE CREATOR / BUILDER
-        // -------------------------------------------------------------
-        window.toggleNewCourseForm = function() {
-            const form = document.getElementById('newCourseFormContainer');
-            if (form) form.classList.toggle('hidden');
-        };
-
-        window.handleCourseImageUpload = function(event) {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    previewCourseImage(e.target.result);
-                };
-                reader.readAsDataURL(file);
-            }
-        };
-
-        window.previewCourseImage = function(url) {
-            const previewBox = document.getElementById('courseImagePreviewBox');
-            if (previewBox && url) {
-                previewBox.innerHTML = `<img src="${url}" class="w-full h-full object-cover rounded-xl">`;
-            }
-        };
-
-        window.switchResourceInputMode = function(mode) {
-            activeResourceInputMode = mode;
-            const fileBtn = document.getElementById('resModeBtnFile');
-            const urlBtn = document.getElementById('resModeBtnUrl');
-            const fileBox = document.getElementById('resInputFileBox');
-            const urlBox = document.getElementById('resInputUrlBox');
-
-            if (mode === 'file') {
-                fileBtn.className = "text-ceut-navy border-b-2 border-ceut-gold pb-1 flex items-center gap-1 font-bold";
-                urlBtn.className = "text-slate-400 hover:text-slate-600 pb-1 flex items-center gap-1 font-medium";
-                fileBox.classList.remove('hidden');
-                urlBox.classList.add('hidden');
-            } else {
-                urlBtn.className = "text-ceut-navy border-b-2 border-ceut-gold pb-1 flex items-center gap-1 font-bold";
-                fileBtn.className = "text-slate-400 hover:text-slate-600 pb-1 flex items-center gap-1 font-medium";
-                urlBox.classList.remove('hidden');
-                fileBox.classList.add('hidden');
-            }
-        };
-
-        window.handleMaterialFileUpload = function(event) {
-            const file = event.target.files[0];
-            if (file) {
-                document.getElementById('moduleMaterialUrlInput').value = URL.createObjectURL(file);
-            }
-        };
-
-        window.toggleQuestionTypeInputs = function() {
-            const type = document.getElementById('questionTypeSelect').value;
-            document.getElementById('qInputsMultiple').classList.add('hidden');
-            document.getElementById('qInputsBoolean').classList.add('hidden');
-            document.getElementById('qInputsReorder').classList.add('hidden');
-
-            if (type === 'multiple') document.getElementById('qInputsMultiple').classList.remove('hidden');
-            if (type === 'boolean') document.getElementById('qInputsBoolean').classList.remove('hidden');
-            if (type === 'reorder') document.getElementById('qInputsReorder').classList.remove('hidden');
-        };
-
-        window.addOrUpdateQuestionItem = function() {
-            const questionText = document.getElementById('moduleQuestionInput').value.trim();
-            const type = document.getElementById('questionTypeSelect').value;
-
-            if (!questionText) {
-                alert("Por favor ingresa la pregunta o instrucción.");
-                return;
-            }
-
-            let newQ = { question: questionText, type: type };
-
-            if (type === 'multiple') {
-                newQ.options = [
-                    document.getElementById('opt0').value.trim() || 'Opción 1',
-                    document.getElementById('opt1').value.trim() || 'Opción 2',
-                    document.getElementById('opt2').value.trim() || 'Opción 3',
-                    document.getElementById('opt3').value.trim() || 'Opción 4'
-                ];
-                newQ.correct = parseInt(document.getElementById('multipleCorrectSelect').value);
-            } else if (type === 'boolean') {
-                newQ.correct = document.getElementById('boolCorrectVal').value === 'true';
-            } else if (type === 'reorder') {
-                newQ.steps = [
-                    document.getElementById('reorderStep1').value.trim() || 'Paso 1',
-                    document.getElementById('reorderStep2').value.trim() || 'Paso 2',
-                    document.getElementById('reorderStep3').value.trim() || 'Paso 3',
-                    document.getElementById('reorderStep4').value.trim() || 'Paso 4'
-                ];
-            }
-
-            currentEditingQuestions.push(newQ);
-            renderAddedQuestionsList();
-
-            // Clear inputs
-            document.getElementById('moduleQuestionInput').value = '';
-        };
-
-        function renderAddedQuestionsList() {
-            const list = document.getElementById('addedQuestionsList');
-            const badge = document.getElementById('quizItemCountBadge');
-            const notice = document.getElementById('noQuestionsNotice');
-
-            if (badge) badge.innerText = `${currentEditingQuestions.length} Pregunta(s)`;
-
-            if (currentEditingQuestions.length === 0) {
-                if (notice) notice.classList.remove('hidden');
-                list.innerHTML = '';
-                return;
-            }
-
-            list.innerHTML = currentEditingQuestions.map((q, idx) => `
-                <div class="bg-white p-3 rounded-lg border border-slate-200 flex justify-between items-center text-xs">
-                    <div>
-                        <span class="font-bold text-ceut-navy">#${idx + 1}: ${q.question}</span>
-                        <span class="ml-2 text-[10px] px-1.5 py-0.5 bg-slate-100 text-slate-600 rounded uppercase font-mono">${q.type}</span>
-                    </div>
-                    <button type="button" onclick="removeQuestionItem(${idx})" class="text-red-600 hover:text-red-800 font-bold">
-                        <i class="fa-solid fa-trash"></i>
-                    </button>
-                </div>
-            `).join('');
-        }
-
-        window.removeQuestionItem = function(idx) {
-            currentEditingQuestions.splice(idx, 1);
-            renderAddedQuestionsList();
-        };
-
-        window.saveCurrentModuleAndPrepareNext = function() {
-            const moduleTitle = document.getElementById('moduleTitleInput').value.trim() || `Módulo ${currentCourseModules.length + 1}`;
-            const videoUrl = document.getElementById('moduleVideoUrlInput').value.trim();
-            const materialUrl = document.getElementById('moduleMaterialUrlInput').value.trim();
-
-            const moduleData = {
-                title: moduleTitle,
-                videoUrl: videoUrl,
-                materialUrl: materialUrl,
-                questions: [...currentEditingQuestions]
-            };
-
-            currentCourseModules.push(moduleData);
-            currentEditingQuestions = [];
-
-            renderCreatedModulesSummary();
-            renderAddedQuestionsList();
-
-            // Reset inputs for next module
-            document.getElementById('moduleTitleInput').value = `Módulo ${currentCourseModules.length + 1}: `;
-            document.getElementById('moduleVideoUrlInput').value = '';
-            document.getElementById('moduleMaterialUrlInput').value = '';
-        };
-
-        function renderCreatedModulesSummary() {
-            const list = document.getElementById('createdModulesSummaryList');
-            const badge = document.getElementById('courseModulesCountBadge');
-
-            if (badge) badge.innerText = `${currentCourseModules.length} Módulo(s) Creado(s)`;
-
-            if (!list) return;
-
-            list.innerHTML = currentCourseModules.map((m, idx) => `
-                <div class="bg-white p-3 rounded-xl border border-slate-200 flex justify-between items-center text-xs">
-                    <div>
-                        <span class="font-bold text-ceut-navy">${m.title}</span>
-                        <span class="text-slate-400 text-[11px] block">${m.questions ? m.questions.length : 0} Pregunta(s) fijada(s)</span>
-                    </div>
-                    <button type="button" onclick="removeCourseModule(${idx})" class="text-red-600 font-bold hover:text-red-800">
-                        <i class="fa-solid fa-trash"></i>
-                    </button>
-                </div>
-            `).join('');
-        }
-
-        window.removeCourseModule = function(idx) {
-            currentCourseModules.splice(idx, 1);
-            renderCreatedModulesSummary();
-        };
-
-        window.handleSaveCourse = function(event) {
-            event.preventDefault();
-
-            const category = document.getElementById('courseRoleCategory').value;
-            const code = document.getElementById('courseCodeNum').value.trim();
-            const title = document.getElementById('courseTitleInput').value.trim();
-            const description = document.getElementById('courseDescInput').value.trim();
-            const imageUrl = document.getElementById('courseImageUrlInput').value.trim() || 'https://placehold.co/600x400/1B1446/F5B000?text=CEUT+Curso';
-            const startDate = document.getElementById('courseStartDate').value;
-            const endDate = document.getElementById('courseEndDate').value;
-            const startTime = document.getElementById('courseStartTime').value;
-            const endTime = document.getElementById('courseEndTime').value;
-
-            // Auto-save current pending module if configured
-            if (currentEditingQuestions.length > 0 || document.getElementById('moduleTitleInput').value) {
-                const currentTitle = document.getElementById('moduleTitleInput').value.trim();
-                if (currentTitle && currentCourseModules.length === 0) {
-                    currentCourseModules.push({
-                        title: currentTitle,
-                        videoUrl: document.getElementById('moduleVideoUrlInput').value.trim(),
-                        materialUrl: document.getElementById('moduleMaterialUrlInput').value.trim(),
-                        questions: [...currentEditingQuestions]
-                    });
-                }
-            }
-
-            const newCourse = {
-                id: 'course_' + Date.now(),
-                category: category,
-                code: code,
-                folio: `CEUT_${category}_${code}`,
-                title: title,
-                description: description,
-                imageUrl: imageUrl,
-                startDate: startDate,
-                endDate: endDate,
-                startTime: startTime,
-                endTime: endTime,
-                modules: [...currentCourseModules]
-            };
-
-            coursesData.push(newCourse);
-            if (window.saveCourseToFirestore) window.saveCourseToFirestore(newCourse);
-
-            // Reset forms & builder state
-            currentCourseModules = [];
-            currentEditingQuestions = [];
-            toggleNewCourseForm();
-
-            renderCatalog();
-            renderAdminCoursesGrid();
-        };
-
-        window.renderAdminCoursesGrid = function() {
-            const grid = document.getElementById('adminCoursesManageGrid');
-            if (!grid) return;
-
-            if (coursesData.length === 0) {
-                grid.innerHTML = `<div class="col-span-full text-center py-6 text-slate-400 italic">No hay cursos creados. Presiona "Diseñar Nuevo Curso" arriba para agregar uno.</div>`;
-                return;
-            }
-
-            grid.innerHTML = coursesData.map(c => `
-                <div class="bg-white p-4 rounded-xl border border-slate-200 space-y-3 shadow-sm">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <span class="text-[10px] font-mono font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded border border-amber-300">${c.folio || 'CEUT_' + c.category + '_' + c.code}</span>
-                            <h4 class="font-bold text-ceut-navy text-sm mt-1">${c.title}</h4>
-                        </div>
-                        <button onclick="deleteCourse('${c.id}')" class="text-red-600 hover:text-red-800 font-bold text-xs">
-                            <i class="fa-solid fa-trash"></i>
-                        </button>
-                    </div>
-                    <p class="text-xs text-slate-500 line-clamp-2">${c.description}</p>
-                    <div class="text-[11px] text-slate-400 flex justify-between border-t pt-2 border-slate-100">
-                        <span>Categoría: <strong>${c.category}</strong></span>
-                        <span>Módulos: <strong>${c.modules ? c.modules.length : 0}</strong></span>
-                    </div>
-                </div>
-            `).join('');
-        };
-
-        window.deleteCourse = function(courseId) {
-            coursesData = coursesData.filter(c => c.id !== courseId);
-            renderCatalog();
-            renderAdminCoursesGrid();
-        };
-
-        // -------------------------------------------------------------
-        // CERTIFICATE CANVAS & DRAGGABLE RUBRIC BOXES
-        // -------------------------------------------------------------
-        window.changeCertTextColor = function(colorHex) {
-            const elements = document.querySelectorAll('.cert-text-white');
-            elements.forEach(el => {
-                el.style.color = colorHex;
-            });
-        };
-
-        window.updateCertificatePreview = function() {
-            const name = document.getElementById('certInputName').value;
-            const reason = document.getElementById('certInputReason').value;
-            const role = document.getElementById('certInputRole').value;
-            const num = document.getElementById('certInputCourseNum').value;
-            const date = document.getElementById('certInputDate').value;
-
-            document.getElementById('certNameDisplay').innerText = name || 'Nombre del Participante';
-            document.getElementById('certReasonDisplay').innerText = reason || '';
-            document.getElementById('certFolioCode').innerText = `CEUT_${role}_${num}_001`;
-            document.getElementById('certDateDisplay').innerText = date || '--/--/----';
-        };
-
-        window.generateAndShowCertificate = function() {
-            switchAdminSubTab('certDesign');
-            document.getElementById('nav-btn-ADMIN').click();
-        };
-
-        // DRAGGING ENGINE FOR RUBRIC BOXES
-        window.initDrag = function(e, elementId) {
-            isDragging = true;
-            currentDragElement = document.getElementById(elementId);
-            const rect = currentDragElement.getBoundingClientRect();
-            dragOffsetX = e.clientX - rect.left;
-            dragOffsetY = e.clientY - rect.top;
-
-            document.addEventListener('mousemove', handleDragMove);
-            document.addEventListener('mouseup', stopDrag);
-        };
-
-        function handleDragMove(e) {
-            if (!isDragging || !currentDragElement) return;
-
-            const container = document.getElementById('certificateCanvas');
-            const containerRect = container.getBoundingClientRect();
-
-            let newX = e.clientX - containerRect.left - dragOffsetX;
-            let newY = e.clientY - containerRect.top - dragOffsetY;
-
-            // Boundary checks
-            newX = Math.max(0, Math.min(newX, containerRect.width - currentDragElement.offsetWidth));
-            newY = Math.max(0, Math.min(newY, containerRect.height - currentDragElement.offsetHeight));
-
-            currentDragElement.style.left = `${newX}px`;
-            currentDragElement.style.top = `${newY}px`;
-            currentDragElement.style.right = 'auto';
-            currentDragElement.style.bottom = 'auto';
-        }
-
-        function stopDrag() {
-            isDragging = false;
-            currentDragElement = null;
-            document.removeEventListener('mousemove', handleDragMove);
-            document.removeEventListener('mouseup', stopDrag);
-        }
+        // INITIALIZATION ON DOM CONTENT LOADED
+        document.addEventListener('DOMContentLoaded', function() {
+            window.selectCategoryTab('DOC');
+        });
     </script>
 </body>
 </html>

@@ -839,14 +839,53 @@
                     <div class="w-8 h-8 rounded-full bg-ceut-gold text-ceut-navy font-bold flex items-center justify-center text-xs">
                         CEUT
                     </div>
-                    <h3 class="font-bold text-ceut-navy text-base">Inscripción / Acceso a Aula Virtual</h3>
+                    <h3 class="font-bold text-ceut-navy text-base" id="modalHeaderTitle">Acceso al Aula Virtual</h3>
                 </div>
                 <button onclick="window.closeRegistrationModal()" class="text-slate-400 hover:text-slate-600 text-lg">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
 
-            <form id="enrollmentForm" onsubmit="window.handleUserRegistration(event)" class="space-y-4">
+            <!-- TAB SWITCHER BETWEEN NEW REGISTRATION AND EXISTING USER LOGIN -->
+            <div class="flex border-b border-slate-200 gap-2 text-xs font-bold">
+                <button type="button" onclick="window.switchModalTab('login')" id="modalTabBtnLogin" class="flex-1 pb-2 border-b-2 border-ceut-gold text-ceut-navy flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-right-to-bracket text-ceut-gold"></i> Ya estoy inscrito
+                </button>
+                <button type="button" onclick="window.switchModalTab('register')" id="modalTabBtnRegister" class="flex-1 pb-2 border-b-2 border-transparent text-slate-400 hover:text-slate-600 flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-user-plus"></i> Nueva Inscripción
+                </button>
+            </div>
+
+            <!-- FORM 1: RETURNING USER LOGIN (EMAIL & PASSWORD OR FOLIO) -->
+            <form id="existingLoginForm" onsubmit="window.handleExistingUserLogin(event)" class="space-y-4">
+                <p class="text-xs text-slate-500">Ingresa con tu correo institucional y tu contraseña para reanudar el curso donde te quedaste.</p>
+                
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Correo Institucional</label>
+                    <input type="email" id="loginEmail" required placeholder="ejemplo@ceut.edu.mx" class="w-full p-2.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-ceut-navy focus:outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Contraseña de Acceso</label>
+                    <input type="password" id="loginPassword" required placeholder="Ingresa tu contraseña registrada" class="w-full p-2.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-ceut-navy focus:outline-none">
+                </div>
+
+                <div id="loginAuthErrMsg" class="hidden text-xs text-red-600 bg-red-50 p-2.5 rounded-lg border border-red-200 font-medium">
+                    No se encontró un usuario con esos datos o la contraseña es incorrecta.
+                </div>
+
+                <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 text-[11px] text-slate-600 space-y-1">
+                    <p><strong>Curso Seleccionado:</strong> <span class="loginCourseTitleSpan">--</span></p>
+                    <p><strong>Clave / Folio del Curso:</strong> <span class="loginCourseFolioSpan font-mono text-ceut-navy font-bold">--</span></p>
+                </div>
+
+                <button type="submit" class="w-full py-3 bg-ceut-navy hover:bg-ceut-purple text-white font-bold text-xs rounded-lg shadow-md transition-colors flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-play text-ceut-gold"></i> Entrar y Reanudar Curso
+                </button>
+            </form>
+
+            <!-- FORM 2: NEW ENROLLMENT FORM -->
+            <form id="enrollmentForm" onsubmit="window.handleUserRegistration(event)" class="space-y-4 hidden">
                 <p class="text-xs text-slate-500">Selecciona tu grado académico, ingresa tu nombre completo y define tus datos de acceso.</p>
                 
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -883,8 +922,8 @@
                 </div>
 
                 <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 text-[11px] text-slate-600 space-y-1">
-                    <p><strong>Curso Seleccionado:</strong> <span id="regCourseTitle">--</span></p>
-                    <p><strong>Clave / Folio Asignado:</strong> <span id="regCourseFolio" class="font-mono text-ceut-navy font-bold">--</span></p>
+                    <p><strong>Curso Seleccionado:</strong> <span class="loginCourseTitleSpan">--</span></p>
+                    <p><strong>Clave / Folio Asignado:</strong> <span class="loginCourseFolioSpan font-mono text-ceut-navy font-bold">--</span></p>
                 </div>
 
                 <button type="submit" class="w-full py-3 bg-ceut-navy hover:bg-ceut-purple text-white font-bold text-xs rounded-lg shadow-md transition-colors flex items-center justify-center gap-2">
@@ -1513,56 +1552,65 @@
         };
 
         // STUDENT & PLAYER FUNCTIONS
+        window.switchModalTab = function(tabName) {
+            const loginForm = document.getElementById('existingLoginForm');
+            const regForm = document.getElementById('enrollmentForm');
+            const btnLogin = document.getElementById('modalTabBtnLogin');
+            const btnReg = document.getElementById('modalTabBtnRegister');
+            const err = document.getElementById('loginAuthErrMsg');
+
+            if (err) err.classList.add('hidden');
+
+            if (tabName === 'login') {
+                if (loginForm) loginForm.classList.remove('hidden');
+                if (regForm) regForm.classList.add('hidden');
+                if (btnLogin) btnLogin.className = "flex-1 pb-2 border-b-2 border-ceut-gold text-ceut-navy flex items-center justify-center gap-1.5";
+                if (btnReg) btnReg.className = "flex-1 pb-2 border-b-2 border-transparent text-slate-400 hover:text-slate-600 flex items-center justify-center gap-1.5";
+            } else {
+                if (loginForm) loginForm.classList.add('hidden');
+                if (regForm) regForm.classList.remove('hidden');
+                if (btnReg) btnReg.className = "flex-1 pb-2 border-b-2 border-ceut-gold text-ceut-navy flex items-center justify-center gap-1.5";
+                if (btnLogin) btnLogin.className = "flex-1 pb-2 border-b-2 border-transparent text-slate-400 hover:text-slate-600 flex items-center justify-center gap-1.5";
+            }
+        };
+
         window.openRegistrationModal = function(courseId) {
             const course = window.coursesData.find(c => c.id === courseId);
             if (!course) return;
 
             window.activeSelectedCourseForEnrollment = course;
-            const regTitle = document.getElementById('regCourseTitle');
-            const regFolio = document.getElementById('regCourseFolio');
+            
+            const titleSpans = document.querySelectorAll('.loginCourseTitleSpan');
+            const folioSpans = document.querySelectorAll('.loginCourseFolioSpan');
 
-            if (regTitle) regTitle.innerText = course.title;
-            if (regFolio) regFolio.innerText = course.id;
+            titleSpans.forEach(el => el.innerText = course.title);
+            folioSpans.forEach(el => el.innerText = course.id);
+
+            window.switchModalTab('login');
 
             const modal = document.getElementById('registrationModal');
             if (modal) modal.classList.remove('hidden');
         };
 
-        window.closeRegistrationModal = function() {
-            const modal = document.getElementById('registrationModal');
-            if (modal) modal.classList.add('hidden');
-        };
-
-        window.handleUserRegistration = function(event) {
+        window.handleExistingUserLogin = function(event) {
             if (event) event.preventDefault();
 
-            const academicTitle = document.getElementById('regAcademicTitle').value;
-            const fullName = document.getElementById('regFullName').value.trim();
-            const email = document.getElementById('regEmail').value.trim();
-            const password = document.getElementById('regPassword').value.trim();
+            const email = document.getElementById('loginEmail').value.trim();
+            const password = document.getElementById('loginPassword').value.trim();
+            const err = document.getElementById('loginAuthErrMsg');
 
             const course = window.activeSelectedCourseForEnrollment;
             if (!course) return;
 
-            // Check if user exists
-            let user = window.registeredUsers.find(u => u.email === email);
+            // Search user in database
+            const user = window.registeredUsers.find(u => u.email === email && u.password === password);
+
             if (!user) {
-                user = {
-                    id: `usr_${Date.now()}`,
-                    academicTitle: academicTitle,
-                    fullName: fullName,
-                    email: email,
-                    password: password,
-                    roleCategory: course.roleCategory,
-                    folio: `${course.id}_${String(window.registeredUsers.length + 1).padStart(3, '0')}`,
-                    score: 0,
-                    progress: 0,
-                    hasAttempted: false
-                };
-                window.registeredUsers.push(user);
-                if (window.saveUserToFirestore) window.saveUserToFirestore(user);
+                if (err) err.classList.remove('hidden');
+                return;
             }
 
+            if (err) err.classList.add('hidden');
             window.currentUserRecord = user;
             window.closeRegistrationModal();
 

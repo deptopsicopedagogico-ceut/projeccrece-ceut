@@ -245,7 +245,7 @@
 
                         <!-- VIDEO PLAYER CONTAINER -->
                         <div class="aspect-video bg-slate-900 rounded-xl overflow-hidden shadow-inner flex items-center justify-center relative border border-slate-800">
-                            <iframe id="youtubeIframe" class="w-full h-full hidden" src="" title="Video del Módulo" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                            <iframe id="youtubeIframe" class="w-full h-full hidden" src="" title="Video del Módulo" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
                             <div id="simulatedPlayer" class="flex flex-col items-center justify-center text-center p-6 space-y-3">
                                 <div class="w-16 h-16 rounded-full bg-ceut-navy border-2 border-ceut-gold text-ceut-gold flex items-center justify-center text-2xl shadow-lg">
                                     <i class="fa-solid fa-play ml-1"></i>
@@ -411,14 +411,18 @@
                     <div id="newCourseFormContainer" class="bg-slate-50 p-6 rounded-2xl border-2 border-ceut-gold space-y-6 shadow-md">
                         <div class="flex justify-between items-center border-b pb-3 border-slate-200">
                             <h4 class="font-extrabold text-base text-ceut-navy flex items-center gap-2">
-                                <i class="fa-solid fa-laptop-code text-ceut-gold"></i> Creador y Diseñador de Curso
+                                <i class="fa-solid fa-laptop-code text-ceut-gold"></i> <span id="courseFormModeHeaderTitle">Creador y Diseñador de Curso</span>
                             </h4>
-                            <span class="text-xs font-mono font-bold bg-amber-100 text-amber-900 px-3 py-1 rounded-lg border border-amber-300">
-                                Panel de Configuración
-                            </span>
+                            <div class="flex items-center gap-2">
+                                <button type="button" onclick="window.resetCourseFormState()" class="text-xs font-bold text-slate-500 hover:text-slate-800 underline">Limpiar Formulario</button>
+                                <span class="text-xs font-mono font-bold bg-amber-100 text-amber-900 px-3 py-1 rounded-lg border border-amber-300">
+                                    Panel de Configuración
+                                </span>
+                            </div>
                         </div>
 
                         <form onsubmit="window.handleSaveCourse(event)" class="space-y-6">
+                            <input type="hidden" id="editingCourseOriginalId" value="">
                             <!-- 1. GENERALIDADES -->
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
@@ -1251,6 +1255,461 @@
             }).join('');
         };
 
+        // RENDER CATALOG COURSES BY CATEGORY
+        window.renderCatalog = function() {
+            const grid = document.getElementById('courseGrid');
+            if (!grid) return;
+
+            const filteredCourses = window.coursesData.filter(c => c.roleCategory === window.currentTab);
+
+            if (filteredCourses.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-1 md:col-span-2 lg:col-span-3 bg-white p-8 rounded-2xl border border-slate-200 text-center space-y-3 shadow-sm">
+                        <div class="w-16 h-16 bg-amber-50 text-ceut-navy rounded-full flex items-center justify-center mx-auto text-2xl border border-amber-200">
+                            <i class="fa-solid fa-folder-open text-ceut-gold"></i>
+                        </div>
+                        <h3 class="font-bold text-ceut-navy text-base">No hay cursos disponibles en esta categoría</h3>
+                        <p class="text-xs text-slate-500 max-w-md mx-auto">Actualmente no existen programas publicados para este perfil. Puedes agregar uno nuevo desde el Portal Administrativo.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = filteredCourses.map(course => `
+                <div class="bg-white rounded-2xl shadow-sm hover:shadow-xl border border-slate-200 overflow-hidden flex flex-col justify-between transition-all duration-300 hover:-translate-y-1">
+                    <div>
+                        <div class="h-44 bg-slate-900 relative overflow-hidden">
+                            <img src="${course.imageUrl || 'https://placehold.co/600x400/1B1446/F5B000?text=Curso+CEUT'}" alt="${course.title}" class="w-full h-full object-cover opacity-90 hover:opacity-100 transition-opacity" onerror="this.onerror=null; this.src='https://placehold.co/600x400/1B1446/F5B000?text=Curso+CEUT';">
+                            <span class="absolute top-3 right-3 text-xs font-mono font-bold px-2.5 py-1 bg-ceut-navy text-ceut-gold border border-ceut-gold/40 rounded-lg shadow">
+                                ${course.id}
+                            </span>
+                        </div>
+                        <div class="p-5 space-y-3">
+                            <h3 class="font-bold text-ceut-navy text-base line-clamp-2">${course.title}</h3>
+                            <p class="text-xs text-slate-600 line-clamp-3 leading-relaxed">${course.description}</p>
+                            <div class="pt-2 text-[11px] text-slate-500 space-y-1 border-t border-slate-100">
+                                <div class="flex items-center gap-1.5"><i class="fa-regular fa-calendar text-ceut-gold"></i> <span>Vigencia: <strong>${course.startDate || 'Sin fecha'}</strong> al <strong>${course.endDate || 'Sin fecha'}</strong></span></div>
+                                <div class="flex items-center gap-1.5"><i class="fa-regular fa-clock text-ceut-gold"></i> <span>Horario: <strong>${course.startTime || '08:00'} a ${course.endTime || '20:00'} hrs</strong></span></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-5 pt-0">
+                        <button onclick="window.openRegistrationModal('${course.id}')" class="w-full py-3 bg-ceut-navy hover:bg-ceut-purple text-white font-extrabold text-xs rounded-xl shadow-md transition-colors flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-user-plus text-ceut-gold"></i>
+                            <span>Inscribirse y Comenzar Curso</span>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        };
+
+        // MEDIA & HELPER FUNCTIONS
+        window.previewCourseImage = function(url) {
+            const previewBox = document.getElementById('courseImagePreviewBox');
+            if (!previewBox) return;
+            if (url) {
+                previewBox.innerHTML = `<img src="${url}" class="w-full h-full object-cover" onerror="this.onerror=null; this.src='https://placehold.co/600x400/1B1446/F5B000?text=Imagen+No+Valida';">`;
+            } else {
+                previewBox.innerHTML = `<span class="text-xs text-slate-400 font-medium">Vista previa de la portada seleccionada</span>`;
+            }
+        };
+
+        window.handleCourseImageUpload = function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const urlInput = document.getElementById('courseImageUrlInput');
+                    if (urlInput) urlInput.value = e.target.result;
+                    window.previewCourseImage(e.target.result);
+                };
+                reader.readAsDataURL(file);
+            }
+        };
+
+        window.switchResourceInputMode = function(mode) {
+            window.activeResourceInputMode = mode;
+            const fileBox = document.getElementById('resInputFileBox');
+            const urlBox = document.getElementById('resInputUrlBox');
+            const btnFile = document.getElementById('resModeBtnFile');
+            const btnUrl = document.getElementById('resModeBtnUrl');
+
+            if (mode === 'file') {
+                if (fileBox) fileBox.classList.remove('hidden');
+                if (urlBox) urlBox.classList.add('hidden');
+                if (btnFile) btnFile.className = "text-ceut-navy border-b-2 border-ceut-gold pb-1 flex items-center gap-1";
+                if (btnUrl) btnUrl.className = "text-slate-400 hover:text-slate-600 pb-1 flex items-center gap-1";
+            } else {
+                if (fileBox) fileBox.classList.add('hidden');
+                if (urlBox) urlBox.classList.remove('hidden');
+                if (btnUrl) btnUrl.className = "text-ceut-navy border-b-2 border-ceut-gold pb-1 flex items-center gap-1";
+                if (btnFile) btnFile.className = "text-slate-400 hover:text-slate-600 pb-1 flex items-center gap-1";
+            }
+        };
+
+        window.handleMaterialFileUpload = function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const urlInput = document.getElementById('moduleMaterialUrlInput');
+                    if (urlInput) urlInput.value = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        };
+
+        window.removeModuleFromBuilder = function(index) {
+            window.currentCourseModules.splice(index, 1);
+            window.renderCreatedModulesSummary();
+        };
+
+        // QUESTION BUILDER LOGIC
+        window.toggleQuestionTypeInputs = function() {
+            const type = document.getElementById('questionTypeSelect').value;
+            const mult = document.getElementById('qInputsMultiple');
+            const bool = document.getElementById('qInputsBoolean');
+            const reord = document.getElementById('qInputsReorder');
+
+            if (mult) mult.classList.toggle('hidden', type !== 'multiple');
+            if (bool) bool.classList.toggle('hidden', type !== 'boolean');
+            if (reord) reord.classList.toggle('hidden', type !== 'reorder');
+        };
+
+        window.addOrUpdateQuestionItem = function() {
+            const type = document.getElementById('questionTypeSelect').value;
+            const questionText = document.getElementById('moduleQuestionInput').value.trim();
+            const feedback = document.getElementById('moduleFeedbackInput').value.trim();
+
+            if (!questionText) {
+                alert("Ingresa la instrucción o pregunta.");
+                return;
+            }
+
+            let qObj = { type, questionText, feedback };
+
+            if (type === 'multiple') {
+                const options = [
+                    document.getElementById('opt0').value.trim(),
+                    document.getElementById('opt1').value.trim(),
+                    document.getElementById('opt2').value.trim(),
+                    document.getElementById('opt3').value.trim()
+                ];
+                const correctIndex = parseInt(document.getElementById('multipleCorrectSelect').value, 10);
+                qObj.options = options;
+                qObj.correctIndex = correctIndex;
+            } else if (type === 'boolean') {
+                qObj.correctValue = document.getElementById('boolCorrectVal').value === 'true';
+            } else if (type === 'reorder') {
+                qObj.steps = [
+                    document.getElementById('reorderStep1').value.trim(),
+                    document.getElementById('reorderStep2').value.trim(),
+                    document.getElementById('reorderStep3').value.trim(),
+                    document.getElementById('reorderStep4').value.trim()
+                ];
+            }
+
+            if (window.editingQuestionIndex >= 0) {
+                window.currentEditingQuestions[window.editingQuestionIndex] = qObj;
+            } else {
+                window.currentEditingQuestions.push(qObj);
+            }
+
+            window.resetQuestionForm();
+            window.renderAddedQuestionsList();
+        };
+
+        window.renderAddedQuestionsList = function() {
+            const list = document.getElementById('addedQuestionsList');
+            const badge = document.getElementById('quizItemCountBadge');
+            if (badge) badge.innerText = `${window.currentEditingQuestions.length} Pregunta(s)`;
+            if (!list) return;
+
+            if (window.currentEditingQuestions.length === 0) {
+                list.innerHTML = `<p id="noQuestionsNotice" class="text-xs text-slate-400 italic bg-slate-50 p-3 rounded-lg text-center border border-dashed border-slate-200">No has agregado preguntas a este módulo.</p>`;
+                return;
+            }
+
+            list.innerHTML = window.currentEditingQuestions.map((q, idx) => `
+                <div class="bg-white p-3 rounded-lg border border-slate-200 flex items-center justify-between text-xs">
+                    <div>
+                        <span class="font-bold text-ceut-navy">${idx + 1}. ${q.questionText}</span>
+                        <span class="ml-2 px-2 py-0.5 bg-amber-100 text-amber-900 rounded font-mono text-[10px] uppercase">${q.type}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button type="button" onclick="window.editQuestionItem(${idx})" class="text-amber-700 hover:text-amber-900 font-bold"><i class="fa-solid fa-pen"></i></button>
+                        <button type="button" onclick="window.removeQuestionItem(${idx})" class="text-red-600 hover:text-red-800 font-bold"><i class="fa-solid fa-trash-can"></i></button>
+                    </div>
+                </div>
+            `).join('');
+        };
+
+        window.editQuestionItem = function(index) {
+            const q = window.currentEditingQuestions[index];
+            if (!q) return;
+
+            window.editingQuestionIndex = index;
+            document.getElementById('questionTypeSelect').value = q.type;
+            window.toggleQuestionTypeInputs();
+
+            document.getElementById('moduleQuestionInput').value = q.questionText || '';
+            document.getElementById('moduleFeedbackInput').value = q.feedback || '';
+
+            if (q.type === 'multiple' && q.options) {
+                document.getElementById('opt0').value = q.options[0] || '';
+                document.getElementById('opt1').value = q.options[1] || '';
+                document.getElementById('opt2').value = q.options[2] || '';
+                document.getElementById('opt3').value = q.options[3] || '';
+                document.getElementById('multipleCorrectSelect').value = q.correctIndex || 0;
+            } else if (q.type === 'boolean') {
+                document.getElementById('boolCorrectVal').value = q.correctValue ? 'true' : 'false';
+            } else if (q.type === 'reorder' && q.steps) {
+                document.getElementById('reorderStep1').value = q.steps[0] || '';
+                document.getElementById('reorderStep2').value = q.steps[1] || '';
+                document.getElementById('reorderStep3').value = q.steps[2] || '';
+                document.getElementById('reorderStep4').value = q.steps[3] || '';
+            }
+
+            const btnText = document.getElementById('btnAddQuestionText');
+            if (btnText) btnText.innerText = "Guardar Cambios de Pregunta";
+            const btnCancel = document.getElementById('btnCancelEditQuestion');
+            if (btnCancel) btnCancel.classList.remove('hidden');
+        };
+
+        window.removeQuestionItem = function(index) {
+            window.currentEditingQuestions.splice(index, 1);
+            window.renderAddedQuestionsList();
+        };
+
+        window.cancelQuestionEdit = function() {
+            window.resetQuestionForm();
+        };
+
+        window.resetQuestionForm = function() {
+            window.editingQuestionIndex = -1;
+            document.getElementById('moduleQuestionInput').value = '';
+            document.getElementById('moduleFeedbackInput').value = '';
+            document.getElementById('opt0').value = '';
+            document.getElementById('opt1').value = '';
+            document.getElementById('opt2').value = '';
+            document.getElementById('opt3').value = '';
+            document.getElementById('reorderStep1').value = '';
+            document.getElementById('reorderStep2').value = '';
+            document.getElementById('reorderStep3').value = '';
+            document.getElementById('reorderStep4').value = '';
+
+            const btnText = document.getElementById('btnAddQuestionText');
+            if (btnText) btnText.innerText = "+ Agregar Pregunta al Módulo";
+            const btnCancel = document.getElementById('btnCancelEditQuestion');
+            if (btnCancel) btnCancel.classList.add('hidden');
+        };
+
+        window.deleteCourseRecord = function(courseId) {
+            if (confirm(`¿Estás seguro de eliminar el curso ${courseId}?`)) {
+                window.coursesData = window.coursesData.filter(c => c.id !== courseId);
+                window.renderAdminCoursesGrid();
+                if (window.renderCatalog) window.renderCatalog();
+            }
+        };
+
+        // STUDENT & PLAYER FUNCTIONS
+        window.openRegistrationModal = function(courseId) {
+            const course = window.coursesData.find(c => c.id === courseId);
+            if (!course) return;
+
+            window.activeSelectedCourseForEnrollment = course;
+            const regTitle = document.getElementById('regCourseTitle');
+            const regFolio = document.getElementById('regCourseFolio');
+
+            if (regTitle) regTitle.innerText = course.title;
+            if (regFolio) regFolio.innerText = course.id;
+
+            const modal = document.getElementById('registrationModal');
+            if (modal) modal.classList.remove('hidden');
+        };
+
+        window.closeRegistrationModal = function() {
+            const modal = document.getElementById('registrationModal');
+            if (modal) modal.classList.add('hidden');
+        };
+
+        window.handleUserRegistration = function(event) {
+            if (event) event.preventDefault();
+
+            const academicTitle = document.getElementById('regAcademicTitle').value;
+            const fullName = document.getElementById('regFullName').value.trim();
+            const email = document.getElementById('regEmail').value.trim();
+            const password = document.getElementById('regPassword').value.trim();
+
+            const course = window.activeSelectedCourseForEnrollment;
+            if (!course) return;
+
+            // Check if user exists
+            let user = window.registeredUsers.find(u => u.email === email);
+            if (!user) {
+                user = {
+                    id: `usr_${Date.now()}`,
+                    academicTitle: academicTitle,
+                    fullName: fullName,
+                    email: email,
+                    password: password,
+                    roleCategory: course.roleCategory,
+                    folio: `${course.id}_${String(window.registeredUsers.length + 1).padStart(3, '0')}`,
+                    score: 0,
+                    progress: 0,
+                    hasAttempted: false
+                };
+                window.registeredUsers.push(user);
+                if (window.saveUserToFirestore) window.saveUserToFirestore(user);
+            }
+
+            window.currentUserRecord = user;
+            window.closeRegistrationModal();
+
+            // Launch Player
+            window.currentCourse = course;
+            window.currentCourseScores = {};
+
+            document.getElementById('playerCourseFolio').innerText = course.id;
+            document.getElementById('playerCourseTitle').innerText = course.title;
+            document.getElementById('playerCourseDates').innerText = `${course.startDate || '--'} al ${course.endDate || '--'}`;
+            document.getElementById('playerCourseTimes').innerText = `${course.startTime || '08:00'} a ${course.endTime || '20:00'}`;
+            document.getElementById('playerProgressPercentage').innerText = `${user.score || 0}%`;
+
+            const secCat = document.getElementById('section-catalog');
+            const secPlay = document.getElementById('section-player');
+            if (secCat) secCat.classList.add('hidden');
+            if (secPlay) secPlay.classList.remove('hidden');
+
+            window.loadModuleInPlayer(0);
+        };
+
+        window.simulateVideoProgress = function() {
+            const evalContainer = document.getElementById('evaluationContainer');
+            if (evalContainer) evalContainer.classList.remove('hidden');
+            const badge = document.getElementById('videoStatusBadge');
+            if (badge) {
+                badge.className = "text-xs px-2.5 py-1 rounded-full font-medium bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1";
+                badge.innerHTML = `<i class="fa-solid fa-circle-check"></i> Reproducción Completa`;
+            }
+        };
+
+        window.renderModuleQuestions = function(questions) {
+            const container = document.getElementById('quizQuestionsList');
+            if (!container) return;
+
+            if (questions.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-400 italic">Este módulo no cuenta con preguntas configuradas.</p>`;
+                return;
+            }
+
+            container.innerHTML = questions.map((q, qIdx) => {
+                if (q.type === 'multiple') {
+                    return `
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 space-y-3">
+                            <span class="font-bold text-sm text-ceut-navy block">${qIdx + 1}. ${q.questionText}</span>
+                            <div class="space-y-2">
+                                ${(q.options || []).map((opt, oIdx) => `
+                                    <label class="flex items-center gap-3 p-2.5 rounded-lg border border-slate-100 hover:bg-slate-50 cursor-pointer text-xs font-semibold">
+                                        <input type="radio" name="q_${qIdx}" value="${oIdx}" required class="text-ceut-navy focus:ring-ceut-navy">
+                                        <span>${opt}</span>
+                                    </label>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                } else if (q.type === 'boolean') {
+                    return `
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 space-y-3">
+                            <span class="font-bold text-sm text-ceut-navy block">${qIdx + 1}. ${q.questionText}</span>
+                            <div class="flex gap-4">
+                                <label class="flex items-center gap-2 p-2.5 rounded-lg border border-slate-100 hover:bg-slate-50 cursor-pointer text-xs font-semibold">
+                                    <input type="radio" name="q_${qIdx}" value="true" required class="text-ceut-navy focus:ring-ceut-navy">
+                                    <span>Verdadero</span>
+                                </label>
+                                <label class="flex items-center gap-2 p-2.5 rounded-lg border border-slate-100 hover:bg-slate-50 cursor-pointer text-xs font-semibold">
+                                    <input type="radio" name="q_${qIdx}" value="false" required class="text-ceut-navy focus:ring-ceut-navy">
+                                    <span>Falso</span>
+                                </label>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    return `
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 space-y-3">
+                            <span class="font-bold text-sm text-ceut-navy block">${qIdx + 1}. ${q.questionText}</span>
+                            <div class="space-y-1">
+                                ${(q.steps || []).map((step, sIdx) => `
+                                    <div class="p-2 text-xs bg-slate-50 rounded border border-slate-200 font-medium">${sIdx + 1}. ${step}</div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+            }).join('');
+        };
+
+        // DRAG & CANVAS CERTIFICATE FUNCTIONS
+        window.initDrag = function(e, elementId) {
+            e.preventDefault();
+            isDragging = true;
+            currentDragElement = document.getElementById(elementId);
+            if (!currentDragElement) return;
+
+            const rect = currentDragElement.getBoundingClientRect();
+            dragOffsetX = e.clientX - rect.left;
+            dragOffsetY = e.clientY - rect.top;
+
+            document.onmousemove = window.onDrag;
+            document.onmouseup = window.stopDrag;
+        };
+
+        window.onDrag = function(e) {
+            if (!isDragging || !currentDragElement) return;
+            const parent = document.getElementById('certificateCanvas');
+            if (!parent) return;
+
+            const parentRect = parent.getBoundingClientRect();
+            let left = e.clientX - parentRect.left - dragOffsetX;
+            let top = e.clientY - parentRect.top - dragOffsetY;
+
+            left = Math.max(0, Math.min(left, parentRect.width - currentDragElement.offsetWidth));
+            top = Math.max(0, Math.min(top, parentRect.height - currentDragElement.offsetHeight));
+
+            currentDragElement.style.left = `${(left / parentRect.width) * 100}%`;
+            currentDragElement.style.top = `${(top / parentRect.height) * 100}%`;
+        };
+
+        window.stopDrag = function() {
+            isDragging = false;
+            currentDragElement = null;
+            document.onmousemove = null;
+            document.onmouseup = null;
+        };
+
+        window.changeCertTextColor = function(colorHex) {
+            const elements = document.querySelectorAll('.cert-text-white');
+            elements.forEach(el => el.style.color = colorHex);
+        };
+
+        window.updateCertificatePreview = function() {
+            const nameVal = document.getElementById('certInputName')?.value || 'Dr. Roberto Carlos Mendoza';
+            const reasonVal = document.getElementById('certInputReason')?.value || 'por haber concluido satisfactoriamente la capacitación psicopedagógica.';
+            const roleVal = document.getElementById('certInputRole')?.value || 'DOC';
+            const numVal = document.getElementById('certInputCourseNum')?.value || '01';
+            const dateVal = document.getElementById('certInputDate')?.value || new Date().toISOString().split('T')[0];
+
+            const certName = document.getElementById('certNameDisplay');
+            const certReason = document.getElementById('certReasonDisplay');
+            const certFolio = document.getElementById('certFolioCode');
+            const certDate = document.getElementById('certDateDisplay');
+
+            if (certName) certName.innerText = nameVal;
+            if (certReason) certReason.innerText = reasonVal;
+            if (certFolio) certFolio.innerText = `CEUT_${roleVal}_${numVal}_001`;
+            if (certDate) certDate.innerText = dateVal;
+        };
+
         window.viewUserCertificate = function(userId) {
             const user = window.registeredUsers.find(u => u.id === userId);
             if (!user) return;
@@ -1285,639 +1744,6 @@
                 window.registeredUsers = window.registeredUsers.filter(u => u.id !== userId);
                 window.renderUsersMasterTable();
             }
-        };
-
-        // COURSE BUILDER & MANAGEMENT FUNCTIONS
-        window.toggleNewCourseForm = function() {
-            const container = document.getElementById('newCourseFormContainer');
-            if (container) container.classList.toggle('hidden');
-        };
-
-        window.switchResourceInputMode = function(mode) {
-            window.activeResourceInputMode = mode;
-            const fileBox = document.getElementById('resInputFileBox');
-            const urlBox = document.getElementById('resInputUrlBox');
-            const btnFile = document.getElementById('resModeBtnFile');
-            const btnUrl = document.getElementById('resModeBtnUrl');
-
-            if (mode === 'file') {
-                if (fileBox) fileBox.classList.remove('hidden');
-                if (urlBox) urlBox.classList.add('hidden');
-                if (btnFile) btnFile.className = "text-ceut-navy border-b-2 border-ceut-gold pb-1 flex items-center gap-1 font-bold";
-                if (btnUrl) btnUrl.className = "text-slate-400 hover:text-slate-600 pb-1 flex items-center gap-1 font-bold";
-            } else {
-                if (fileBox) fileBox.classList.add('hidden');
-                if (urlBox) urlBox.classList.remove('hidden');
-                if (btnUrl) btnUrl.className = "text-ceut-navy border-b-2 border-ceut-gold pb-1 flex items-center gap-1 font-bold";
-                if (btnFile) btnFile.className = "text-slate-400 hover:text-slate-600 pb-1 flex items-center gap-1 font-bold";
-            }
-        };
-
-        window.previewCourseImage = function(url) {
-            const box = document.getElementById('courseImagePreviewBox');
-            if (box && url) {
-                box.innerHTML = `<img src="${url}" class="w-full h-full object-cover">`;
-            }
-        };
-
-        window.handleCourseImageUpload = function(event) {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    window.previewCourseImage(e.target.result);
-                };
-                reader.readAsDataURL(file);
-            }
-        };
-
-        window.toggleQuestionTypeInputs = function() {
-            const type = document.getElementById('questionTypeSelect').value;
-            const mult = document.getElementById('qInputsMultiple');
-            const bool = document.getElementById('qInputsBoolean');
-            const reord = document.getElementById('qInputsReorder');
-
-            if (mult) mult.classList.toggle('hidden', type !== 'multiple');
-            if (bool) bool.classList.toggle('hidden', type !== 'boolean');
-            if (reord) reord.classList.toggle('hidden', type !== 'reorder');
-        };
-
-        window.addOrUpdateQuestionItem = function() {
-            const qType = document.getElementById('questionTypeSelect').value;
-            const text = document.getElementById('moduleQuestionInput').value.trim();
-            const feedback = document.getElementById('moduleFeedbackInput').value.trim();
-
-            if (!text) {
-                alert("Ingresa la instrucción o texto de la pregunta.");
-                return;
-            }
-
-            let questionObj = { type: qType, question: text, feedback: feedback };
-
-            if (qType === 'multiple') {
-                const opt0 = document.getElementById('opt0').value.trim() || 'Opción 1';
-                const opt1 = document.getElementById('opt1').value.trim() || 'Opción 2';
-                const opt2 = document.getElementById('opt2').value.trim() || 'Opción 3';
-                const opt3 = document.getElementById('opt3').value.trim() || 'Opción 4';
-                const correctIdx = parseInt(document.getElementById('multipleCorrectSelect').value, 10);
-                questionObj.options = [opt0, opt1, opt2, opt3];
-                questionObj.correctIndex = correctIdx;
-            } else if (qType === 'boolean') {
-                questionObj.correctValue = document.getElementById('boolCorrectVal').value === 'true';
-            } else if (qType === 'reorder') {
-                const s1 = document.getElementById('reorderStep1').value.trim() || 'Paso 1';
-                const s2 = document.getElementById('reorderStep2').value.trim() || 'Paso 2';
-                const s3 = document.getElementById('reorderStep3').value.trim() || 'Paso 3';
-                const s4 = document.getElementById('reorderStep4').value.trim() || 'Paso 4';
-                questionObj.correctOrder = [s1, s2, s3, s4];
-            }
-
-            if (window.editingQuestionIndex >= 0) {
-                window.currentEditingQuestions[window.editingQuestionIndex] = questionObj;
-                window.editingQuestionIndex = -1;
-            } else {
-                window.currentEditingQuestions.push(questionObj);
-            }
-
-            window.renderAddedQuestionsList();
-            window.resetQuestionForm();
-        };
-
-        window.renderAddedQuestionsList = function() {
-            const container = document.getElementById('addedQuestionsList');
-            const badge = document.getElementById('quizItemCountBadge');
-            if (badge) badge.innerText = `${window.currentEditingQuestions.length} Pregunta(s)`;
-            if (!container) return;
-
-            if (window.currentEditingQuestions.length === 0) {
-                container.innerHTML = `<p id="noQuestionsNotice" class="text-xs text-slate-400 italic bg-slate-50 p-3 rounded-lg text-center border border-dashed border-slate-200">No has agregado preguntas a este módulo. Completa el formulario y presiona "+ Agregar Pregunta al Módulo".</p>`;
-                return;
-            }
-
-            container.innerHTML = window.currentEditingQuestions.map((q, idx) => `
-                <div class="bg-slate-100 p-2.5 rounded-lg border border-slate-200 flex items-center justify-between text-xs">
-                    <div>
-                        <span class="font-bold text-ceut-navy">#${idx + 1} (${q.type}):</span> ${q.question}
-                    </div>
-                    <div class="flex items-center gap-1">
-                        <button type="button" onclick="window.editQuestionItem(${idx})" class="p-1 text-amber-600 hover:text-amber-800"><i class="fa-solid fa-pen"></i></button>
-                        <button type="button" onclick="window.removeQuestionItem(${idx})" class="p-1 text-red-600 hover:text-red-800"><i class="fa-solid fa-trash"></i></button>
-                    </div>
-                </div>
-            `).join('');
-        };
-
-        window.editQuestionItem = function(index) {
-            const q = window.currentEditingQuestions[index];
-            if (!q) return;
-            window.editingQuestionIndex = index;
-            document.getElementById('questionTypeSelect').value = q.type;
-            window.toggleQuestionTypeInputs();
-
-            document.getElementById('moduleQuestionInput').value = q.question;
-            document.getElementById('moduleFeedbackInput').value = q.feedback || '';
-
-            if (q.type === 'multiple') {
-                document.getElementById('opt0').value = q.options[0] || '';
-                document.getElementById('opt1').value = q.options[1] || '';
-                document.getElementById('opt2').value = q.options[2] || '';
-                document.getElementById('opt3').value = q.options[3] || '';
-                document.getElementById('multipleCorrectSelect').value = q.correctIndex || 0;
-            } else if (q.type === 'boolean') {
-                document.getElementById('boolCorrectVal').value = q.correctValue ? 'true' : 'false';
-            } else if (q.type === 'reorder') {
-                document.getElementById('reorderStep1').value = q.correctOrder[0] || '';
-                document.getElementById('reorderStep2').value = q.correctOrder[1] || '';
-                document.getElementById('reorderStep3').value = q.correctOrder[2] || '';
-                document.getElementById('reorderStep4').value = q.correctOrder[3] || '';
-            }
-
-            const btnText = document.getElementById('btnAddQuestionText');
-            if (btnText) btnText.innerText = `Actualizar Pregunta #${index + 1}`;
-            const cancelBtn = document.getElementById('btnCancelEditQuestion');
-            if (cancelBtn) cancelBtn.classList.remove('hidden');
-        };
-
-        window.cancelQuestionEdit = function() {
-            window.editingQuestionIndex = -1;
-            window.resetQuestionForm();
-        };
-
-        window.removeQuestionItem = function(index) {
-            window.currentEditingQuestions.splice(index, 1);
-            window.renderAddedQuestionsList();
-        };
-
-        window.resetQuestionForm = function() {
-            document.getElementById('moduleQuestionInput').value = '';
-            document.getElementById('moduleFeedbackInput').value = '';
-            document.getElementById('opt0').value = '';
-            document.getElementById('opt1').value = '';
-            document.getElementById('opt2').value = '';
-            document.getElementById('opt3').value = '';
-            document.getElementById('reorderStep1').value = '';
-            document.getElementById('reorderStep2').value = '';
-            document.getElementById('reorderStep3').value = '';
-            document.getElementById('reorderStep4').value = '';
-
-            const btnText = document.getElementById('btnAddQuestionText');
-            if (btnText) btnText.innerText = '+ Agregar Pregunta al Módulo';
-            const cancelBtn = document.getElementById('btnCancelEditQuestion');
-            if (cancelBtn) cancelBtn.classList.add('hidden');
-        };
-
-        window.saveCurrentModuleAndPrepareNext = function() {
-            const title = document.getElementById('moduleTitleInput').value.trim() || `Módulo ${window.currentCourseModules.length + 1}`;
-            const videoUrl = document.getElementById('moduleVideoUrlInput').value.trim();
-            let materialUrl = document.getElementById('moduleMaterialUrlInput').value.trim();
-
-            const modObj = {
-                id: `mod_${Date.now()}`,
-                title: title,
-                videoUrl: videoUrl,
-                materialUrl: materialUrl,
-                questions: [...window.currentEditingQuestions]
-            };
-
-            window.currentCourseModules.push(modObj);
-
-            // Reset module section inputs for the next module
-            document.getElementById('moduleTitleInput').value = `Módulo ${window.currentCourseModules.length + 1}: Tema Siguiente`;
-            document.getElementById('moduleVideoUrlInput').value = '';
-            document.getElementById('moduleMaterialUrlInput').value = '';
-            window.currentEditingQuestions = [];
-            window.renderAddedQuestionsList();
-            window.renderCreatedModulesSummary();
-
-            alert(`Módulo "${title}" guardado exitosamente. Puedes configurar el siguiente módulo.`);
-        };
-
-        window.renderCreatedModulesSummary = function() {
-            const summaryBox = document.getElementById('createdModulesSummaryList');
-            const badge = document.getElementById('courseModulesCountBadge');
-            if (badge) badge.innerText = `${window.currentCourseModules.length} Módulo(s) Creado(s)`;
-            if (!summaryBox) return;
-
-            summaryBox.innerHTML = window.currentCourseModules.map((m, idx) => `
-                <div class="bg-amber-100/70 p-2 rounded-lg border border-amber-300 flex items-center justify-between text-xs">
-                    <span class="font-bold text-ceut-navy">${idx + 1}. ${m.title} (${m.questions.length} reactivos)</span>
-                    <button type="button" onclick="window.removeModuleFromBuilder(${idx})" class="text-red-600 hover:text-red-800 font-bold"><i class="fa-solid fa-trash-can"></i> Quitar</button>
-                </div>
-            `).join('');
-        };
-
-        window.removeModuleFromBuilder = function(index) {
-            window.currentCourseModules.splice(index, 1);
-            window.renderCreatedModulesSummary();
-        };
-
-        window.handleSaveCourse = function(event) {
-            if (event) event.preventDefault();
-
-            const roleCategory = document.getElementById('courseRoleCategory').value;
-            const codeNum = document.getElementById('courseCodeNum').value.trim();
-            const title = document.getElementById('courseTitleInput').value.trim();
-            const desc = document.getElementById('courseDescInput').value.trim();
-            const startDate = document.getElementById('courseStartDate').value;
-            const endDate = document.getElementById('courseEndDate').value;
-            const startTime = document.getElementById('courseStartTime').value;
-            const endTime = document.getElementById('courseEndTime').value;
-
-            const previewImgEl = document.querySelector('#courseImagePreviewBox img');
-            const imageUrl = previewImgEl ? previewImgEl.src : 'https://placehold.co/600x400/1B1446/F5B000?text=Curso+CEUT';
-
-            // Ensure we have at least one module
-            if (window.currentCourseModules.length === 0) {
-                window.saveCurrentModuleAndPrepareNext();
-            }
-
-            const newCourse = {
-                id: `CEUT_${roleCategory}_${codeNum}`,
-                roleCategory: roleCategory,
-                codeNum: codeNum,
-                title: title,
-                description: desc,
-                imageUrl: imageUrl,
-                startDate: startDate,
-                endDate: endDate,
-                startTime: startTime,
-                endTime: endTime,
-                modules: [...window.currentCourseModules]
-            };
-
-            // Check if existing course exists to replace
-            const existingIdx = window.coursesData.findIndex(c => c.id === newCourse.id);
-            if (existingIdx >= 0) {
-                window.coursesData[existingIdx] = newCourse;
-            } else {
-                window.coursesData.push(newCourse);
-            }
-
-            if (window.saveCourseToFirestore) window.saveCourseToFirestore(newCourse);
-
-            // Reset temp variables & UI
-            window.currentCourseModules = [];
-            window.currentEditingQuestions = [];
-            window.toggleNewCourseForm();
-            window.renderAdminCoursesGrid();
-            if (window.renderCatalog) window.renderCatalog();
-
-            alert(`Curso "${title}" guardado y publicado en el catálogo oficial de CEUT.`);
-        };
-
-        window.renderAdminCoursesGrid = function() {
-            const grid = document.getElementById('adminCoursesManageGrid');
-            if (!grid) return;
-
-            if (window.coursesData.length === 0) {
-                grid.innerHTML = `<div class="col-span-2 bg-slate-50 p-6 rounded-xl border border-dashed border-slate-300 text-center text-slate-400 italic">No hay cursos creados. Haz clic en "Diseñar Nuevo Curso" arriba para agregar uno.</div>`;
-                return;
-            }
-
-            grid.innerHTML = window.coursesData.map(course => `
-                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3 flex flex-col justify-between">
-                    <div>
-                        <div class="flex justify-between items-start gap-2 mb-2">
-                            <span class="text-xs font-mono font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded border border-amber-300">${course.id}</span>
-                            <span class="text-[10px] font-bold px-2 py-0.5 bg-ceut-navy text-ceut-gold rounded uppercase">${course.roleCategory}</span>
-                        </div>
-                        <h4 class="font-bold text-ceut-navy text-sm">${course.title}</h4>
-                        <p class="text-xs text-slate-500 line-clamp-2 mt-1">${course.description}</p>
-                    </div>
-
-                    <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
-                        <span class="text-slate-400 font-medium">${(course.modules || []).length} Módulo(s)</span>
-                        <div class="flex gap-2">
-                            <button onclick="window.deleteCourseRecord('${course.id}')" class="px-3 py-1 bg-red-100 hover:bg-red-200 text-red-700 font-bold rounded-lg transition-colors">
-                                <i class="fa-solid fa-trash-can mr-1"></i> Eliminar
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `).join('');
-        };
-
-        window.deleteCourseRecord = function(courseId) {
-            if (confirm(`¿Estás seguro de eliminar el curso con folio ${courseId}?`)) {
-                window.coursesData = window.coursesData.filter(c => c.id !== courseId);
-                window.renderAdminCoursesGrid();
-                if (window.renderCatalog) window.renderCatalog();
-            }
-        };
-
-        // CERTIFICATE EDITOR & PREVIEW DRAG LOGIC
-        window.updateCertificatePreview = function() {
-            const nameVal = document.getElementById('certInputName').value;
-            const reasonVal = document.getElementById('certInputReason').value;
-            const roleVal = document.getElementById('certInputRole').value;
-            const courseNumVal = document.getElementById('certInputCourseNum').value;
-            const dateVal = document.getElementById('certInputDate').value;
-
-            const certName = document.getElementById('certNameDisplay');
-            const certReason = document.getElementById('certReasonDisplay');
-            const certFolio = document.getElementById('certFolioCode');
-            const certDate = document.getElementById('certDateDisplay');
-
-            if (certName) certName.innerText = nameVal || 'Nombre del Participante';
-            if (certReason) certReason.innerText = reasonVal || 'Leyenda del Curso';
-            if (certFolio) certFolio.innerText = `CEUT_${roleVal}_${courseNumVal}_001`;
-            if (certDate) certDate.innerText = dateVal || '--/--/----';
-        };
-
-        window.changeCertTextColor = function(colorHex) {
-            const picker = document.getElementById('certTextColorPicker');
-            if (picker) picker.value = colorHex;
-            const elements = document.querySelectorAll('.cert-text-white');
-            elements.forEach(el => {
-                el.style.color = colorHex;
-            });
-        };
-
-        window.initDrag = function(e, elementId) {
-            isDragging = true;
-            currentDragElement = document.getElementById(elementId);
-            const rect = currentDragElement.getBoundingClientRect();
-            dragOffsetX = e.clientX - rect.left;
-            dragOffsetY = e.clientY - rect.top;
-
-            document.querySelectorAll('.rubric-box-wrapper').forEach(box => box.classList.remove('active-rubric'));
-            currentDragElement.classList.add('active-rubric');
-        };
-
-        document.addEventListener('mousemove', function(e) {
-            if (!isDragging || !currentDragElement) return;
-            const canvas = document.getElementById('certificateCanvas');
-            const canvasRect = canvas.getBoundingClientRect();
-
-            let left = e.clientX - canvasRect.left - dragOffsetX;
-            let top = e.clientY - canvasRect.top - dragOffsetY;
-
-            // Constrain inside bounds
-            left = Math.max(0, Math.min(left, canvasRect.width - currentDragElement.offsetWidth));
-            top = Math.max(0, Math.min(top, canvasRect.height - currentDragElement.offsetHeight));
-
-            currentDragElement.style.left = `${left}px`;
-            currentDragElement.style.top = `${top}px`;
-            currentDragElement.style.right = 'auto';
-            currentDragElement.style.bottom = 'auto';
-        });
-
-        document.addEventListener('mouseup', function() {
-            isDragging = false;
-            currentDragElement = null;
-        });
-
-        // CATALOG & COURSE PLAYER LOGIC
-        window.renderCatalog = function() {
-            const grid = document.getElementById('courseGrid');
-            if (!grid) return;
-
-            const filteredCourses = window.coursesData.filter(c => c.roleCategory === window.currentTab);
-
-            if (filteredCourses.length === 0) {
-                grid.innerHTML = `
-                    <div class="col-span-1 md:col-span-2 lg:col-span-3 bg-white p-12 rounded-2xl border border-slate-200 text-center space-y-4">
-                        <div class="w-16 h-16 bg-amber-100 text-ceut-navy rounded-full flex items-center justify-center mx-auto text-2xl font-bold">
-                            <i class="fa-solid fa-folder-open text-ceut-gold"></i>
-                        </div>
-                        <h3 class="text-lg font-bold text-ceut-navy">No hay cursos registrados para esta categoría</h3>
-                        <p class="text-xs text-slate-500 max-w-md mx-auto">Accede al Portal Administrativo para agregar y publicar los contenidos oficiales correspondientes.</p>
-                        <button onclick="window.openAdminPortal()" class="px-5 py-2.5 bg-ceut-navy text-white text-xs font-extrabold rounded-xl shadow hover:bg-ceut-purple">
-                            Ir al Portal Administrativo
-                        </button>
-                    </div>
-                `;
-                return;
-            }
-
-            grid.innerHTML = filteredCourses.map(course => `
-                <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between group">
-                    <div>
-                        <div class="h-44 bg-slate-200 relative overflow-hidden">
-                            <img src="${course.imageUrl || 'https://placehold.co/600x400/1B1446/F5B000?text=Curso+CEUT'}" alt="${course.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
-                            <span class="absolute top-3 left-3 bg-ceut-navy/90 text-ceut-gold text-[11px] font-mono font-bold px-3 py-1 rounded-lg shadow border border-ceut-gold/30">${course.id}</span>
-                        </div>
-                        <div class="p-5 space-y-3">
-                            <h3 class="font-bold text-ceut-navy text-base leading-snug">${course.title}</h3>
-                            <p class="text-xs text-slate-500 leading-relaxed line-clamp-3">${course.description}</p>
-                        </div>
-                    </div>
-                    <div class="p-5 pt-0 border-t border-slate-100 mt-4">
-                        <button onclick="window.openRegistrationModal('${course.id}')" class="w-full py-3 bg-ceut-navy hover:bg-ceut-purple text-white font-black text-xs rounded-xl shadow flex items-center justify-center gap-2 transition-all">
-                            <i class="fa-solid fa-user-plus text-ceut-gold"></i> Inscribirse / Acceder al Curso
-                        </button>
-                    </div>
-                </div>
-            `).join('');
-        };
-
-        window.openRegistrationModal = function(courseId) {
-            const course = window.coursesData.find(c => c.id === courseId);
-            if (!course) return;
-
-            window.activeSelectedCourseForEnrollment = course;
-            const modal = document.getElementById('registrationModal');
-            const titleEl = document.getElementById('regCourseTitle');
-            const folioEl = document.getElementById('regCourseFolio');
-
-            if (titleEl) titleEl.innerText = course.title;
-            if (folioEl) folioEl.innerText = course.id;
-            if (modal) modal.classList.remove('hidden');
-        };
-
-        window.closeRegistrationModal = function() {
-            const modal = document.getElementById('registrationModal');
-            if (modal) modal.classList.add('hidden');
-        };
-
-        window.handleUserRegistration = function(event) {
-            if (event) event.preventDefault();
-            const title = document.getElementById('regAcademicTitle').value;
-            const name = document.getElementById('regFullName').value.trim();
-            const email = document.getElementById('regEmail').value.trim().toLowerCase();
-            const pass = document.getElementById('regPassword').value.trim();
-            const targetCourseId = window.activeSelectedCourseForEnrollment?.id || 'CEUT_DOC_01';
-
-            // Verificar si el curso se encuentra en la ventana de fechas/horarios permitidos
-            if (!window.isCourseAccessTimeValid(window.activeSelectedCourseForEnrollment)) {
-                alert("El tiempo asignado para este curso ha expirado o aún no ha iniciado. Consulta los horarios de vigencia.");
-                return;
-            }
-
-            // Buscar si ya existe un registro con este correo y curso
-            let existingUser = window.registeredUsers.find(u => u.email === email && u.courseId === targetCourseId);
-
-            if (existingUser) {
-                // Si la contraseña coincide, le permite retomar el curso
-                if (existingUser.password !== pass) {
-                    alert("El correo institucional ya está registrado. Introduce la contraseña correcta para retomar tu curso.");
-                    return;
-                }
-                window.currentUserRecord = existingUser;
-            } else {
-                // Nuevo registro
-                window.currentUserRecord = {
-                    id: `usr_${Date.now()}`,
-                    academicTitle: title,
-                    fullName: name,
-                    email: email,
-                    password: pass,
-                    roleCategory: window.activeSelectedCourseForEnrollment?.roleCategory || 'DOC',
-                    folio: targetCourseId,
-                    courseId: targetCourseId,
-                    progress: 0,
-                    score: 0,
-                    hasAttempted: false
-                };
-                window.registeredUsers.push(window.currentUserRecord);
-                if (window.saveUserToFirestore) window.saveUserToFirestore(window.currentUserRecord);
-            }
-
-            window.closeRegistrationModal();
-            window.launchCoursePlayer(window.activeSelectedCourseForEnrollment);
-        };
-
-        window.isCourseAccessTimeValid = function(course) {
-            if (!course || !course.startDate || !course.endDate) return true;
-
-            const now = new Date();
-            const start = new Date(`${course.startDate}T${course.startTime || '00:00'}:00`);
-            const end = new Date(`${course.endDate}T${course.endTime || '23:59'}:00`);
-
-            return now >= start && now <= end;
-        };
-
-        window.launchCoursePlayer = function(course) {
-            window.currentCourse = course;
-            window.currentModuleIndex = 0;
-
-            const secCat = document.getElementById('section-catalog');
-            const secPlay = document.getElementById('section-player');
-            const secAdm = document.getElementById('section-admin');
-
-            if (secCat) secCat.classList.add('hidden');
-            if (secAdm) secAdm.classList.add('hidden');
-            if (secPlay) secPlay.classList.remove('hidden');
-
-            document.getElementById('playerCourseFolio').innerText = course.id;
-            document.getElementById('playerCourseTitle').innerText = course.title;
-            document.getElementById('playerCourseDates').innerText = `${course.startDate || '--'} al ${course.endDate || '--'}`;
-            document.getElementById('playerCourseTimes').innerText = `${course.startTime || '--'} a ${course.endTime || '--'}`;
-
-            // Check if user already completed an attempt
-            if (window.currentUserRecord && window.currentUserRecord.hasAttempted) {
-                const quizForm = document.getElementById('quizForm');
-                const noticeBox = document.getElementById('attemptNoticeBox');
-                if (quizForm) quizForm.classList.add('hidden');
-                if (noticeBox) noticeBox.classList.remove('hidden');
-
-                if ((window.currentUserRecord.score || 0) >= 80) {
-                    document.getElementById('courseCompletionCard').classList.remove('hidden');
-                }
-            } else {
-                const quizForm = document.getElementById('quizForm');
-                const noticeBox = document.getElementById('attemptNoticeBox');
-                if (quizForm) quizForm.classList.remove('hidden');
-                if (noticeBox) noticeBox.classList.add('hidden');
-            }
-
-            window.loadModuleInPlayer(0);
-            window.renderModulesSidebar();
-        };
-
-        window.handleQuizSubmit = function(event) {
-            if (event) event.preventDefault();
-
-            if (window.currentUserRecord && window.currentUserRecord.hasAttempted) {
-                alert("Ya has utilizado tu única oportunidad para realizar este curso con tu correo institucional.");
-                return;
-            }
-
-            const currentMod = window.currentCourse?.modules?.[window.currentModuleIndex];
-            const questions = currentMod?.questions || [];
-            
-            let correctCount = 0;
-            const totalQuestions = questions.length;
-
-            if (totalQuestions > 0) {
-                questions.forEach((q, idx) => {
-                    const selected = document.querySelector(`input[name="q_${idx}"]:checked`);
-                    if (selected) {
-                        if (q.type === 'multiple' && parseInt(selected.value, 10) === q.correctIndex) {
-                            correctCount++;
-                        } else if (q.type === 'boolean' && (selected.value === 'true') === q.correctValue) {
-                            correctCount++;
-                        }
-                    }
-                });
-            }
-
-            const moduleScore = totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 100;
-            const totalMods = window.currentCourse?.modules?.length || 1;
-            
-            window.currentCourseScores = window.currentCourseScores || {};
-            window.currentCourseScores[window.currentModuleIndex] = moduleScore;
-
-            let totalScoreSum = 0;
-            Object.values(window.currentCourseScores).forEach(s => totalScoreSum += s);
-            const overallScore = Math.round(totalScoreSum / totalMods);
-
-            document.getElementById('playerProgressPercentage').innerText = `${overallScore}%`;
-
-            // Registrar intento único realizado en la cuenta del usuario
-            if (window.currentUserRecord) {
-                window.currentUserRecord.score = overallScore;
-                window.currentUserRecord.progress = overallScore;
-                window.currentUserRecord.hasAttempted = true;
-                if (window.saveUserToFirestore) window.saveUserToFirestore(window.currentUserRecord);
-            }
-
-            // Ocultar formulario e impedir intentos extra
-            document.getElementById('quizForm').classList.add('hidden');
-            document.getElementById('attemptNoticeBox').classList.remove('hidden');
-
-            if (overallScore >= 80) {
-                document.getElementById('courseCompletionCard').classList.remove('hidden');
-                alert(`¡Felicidades! Calificación obtenida: ${overallScore}%. Alcanzaste el 80% mínimo. Puedes descargar tu reconocimiento oficial a continuación.`);
-            } else {
-                alert(`Evaluación finalizada. Tu calificación final fue del ${overallScore}%. Al no alcanzar el 80% mínimo y ser una única oportunidad por correo registrado, no es posible emitir la constancia.`);
-            }
-        };
-
-        window.downloadStudentCertificate = function() {
-            if (!window.currentUserRecord) return;
-            window.switchAdminSubTab('certDesign');
-
-            const nameInput = document.getElementById('certInputName');
-            const roleSelect = document.getElementById('certInputRole');
-            const dateInput = document.getElementById('certInputDate');
-
-            if (nameInput) nameInput.value = `${window.currentUserRecord.academicTitle ? window.currentUserRecord.academicTitle + ' ' : ''}${window.currentUserRecord.fullName}`;
-            if (roleSelect) roleSelect.value = window.currentUserRecord.roleCategory || 'DOC';
-            if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
-
-            window.updateCertificatePreview();
-            window.print();
-        };
-
-        window.renderModulesSidebar = function() {
-            const container = document.getElementById('modulesSidebarList');
-            const counter = document.getElementById('moduleCounter');
-            const mods = window.currentCourse?.modules || [];
-            if (counter) counter.innerText = `${window.currentModuleIndex + 1}/${mods.length}`;
-            if (!container) return;
-
-            container.innerHTML = mods.map((m, idx) => `
-                <button onclick="window.loadModuleInPlayer(${idx})" class="w-full text-left p-3 rounded-xl border transition-all text-xs flex items-center justify-between ${idx === window.currentModuleIndex ? 'bg-ceut-navy text-white font-bold border-ceut-gold' : 'bg-white text-slate-700 hover:bg-slate-100 border-slate-200'}">
-                    <span>${idx + 1}. ${m.title}</span>
-                    <i class="fa-solid fa-chevron-right text-[10px]"></i>
-                </button>
-            `).join('');
-        };
-
-        window.generateAndShowCertificate = function() {
-            window.showAdminView();
-            window.switchAdminSubTab('certDesign');
         };
 
         // INITIALIZATION ON DOM CONTENT LOADED

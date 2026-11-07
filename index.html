@@ -1448,5 +1448,464 @@
             window.selectCategoryTab('DOC');
         };
     </script>
+
+    <!-- COMPLEMENTARY INTERACTIVE HANDLERS FOR ENROLLMENT, LOGIN, QUIZZES, & ADMIN CONTROLS -->
+    <script>
+        // MODAL TOGGLES & TAB SWITCHING
+        window.openEnrollmentModal = function(courseId) {
+            const courses = Array.isArray(window.coursesData) ? window.coursesData : [];
+            const course = courses.find(c => c.id === courseId);
+            if (!course) return;
+
+            window.activeSelectedCourseForEnrollment = course;
+
+            const modal = document.getElementById('registrationModal');
+            const headerTitle = document.getElementById('modalHeaderTitle');
+            if (headerTitle) headerTitle.innerText = `Acceso: ${course.title}`;
+
+            // Update course details spans in modal
+            document.querySelectorAll('.loginCourseTitleSpan').forEach(el => el.innerText = course.title);
+            document.querySelectorAll('.loginCourseFolioSpan').forEach(el => el.innerText = course.code || 'CEUT-01');
+
+            if (modal) modal.classList.remove('hidden');
+            window.switchModalTab('login');
+        };
+
+        window.closeRegistrationModal = function() {
+            const modal = document.getElementById('registrationModal');
+            if (modal) modal.classList.add('hidden');
+        };
+
+        window.switchModalTab = function(tab) {
+            const loginForm = document.getElementById('existingLoginForm');
+            const registerForm = document.getElementById('enrollmentForm');
+            const tabBtnLogin = document.getElementById('modalTabBtnLogin');
+            const tabBtnRegister = document.getElementById('modalTabBtnRegister');
+
+            if (tab === 'login') {
+                if (loginForm) loginForm.classList.remove('hidden');
+                if (registerForm) registerForm.classList.add('hidden');
+                if (tabBtnLogin) tabBtnLogin.className = "flex-1 pb-2 border-b-2 border-ceut-gold text-ceut-navy font-bold flex items-center justify-center gap-1.5";
+                if (tabBtnRegister) tabBtnRegister.className = "flex-1 pb-2 border-b-2 border-transparent text-slate-400 font-bold hover:text-slate-600 flex items-center justify-center gap-1.5";
+            } else {
+                if (loginForm) loginForm.classList.add('hidden');
+                if (registerForm) registerForm.classList.remove('hidden');
+                if (tabBtnLogin) tabBtnLogin.className = "flex-1 pb-2 border-b-2 border-transparent text-slate-400 font-bold hover:text-slate-600 flex items-center justify-center gap-1.5";
+                if (tabBtnRegister) tabBtnRegister.className = "flex-1 pb-2 border-b-2 border-ceut-gold text-ceut-navy font-bold flex items-center justify-center gap-1.5";
+            }
+        };
+
+        // LAUNCH PLAYER WITH COURSE & USER
+        window.startCourseSession = function(userRecord, courseRecord) {
+            window.currentUser = userRecord;
+            window.currentCourse = courseRecord;
+
+            window.closeRegistrationModal();
+
+            // Hide catalog & admin, show player
+            const secCatalog = document.getElementById('section-catalog');
+            const secAdmin = document.getElementById('section-admin');
+            const secPlayer = document.getElementById('section-player');
+
+            if (secCatalog) secCatalog.classList.add('hidden');
+            if (secAdmin) secAdmin.classList.add('hidden');
+            if (secPlayer) secPlayer.classList.remove('hidden');
+
+            // Set Course Header Info
+            const playerFolio = document.getElementById('playerCourseFolio');
+            const playerTitle = document.getElementById('playerCourseTitle');
+            const playerDates = document.getElementById('playerCourseDates');
+            const playerTimes = document.getElementById('playerCourseTimes');
+
+            if (playerFolio) playerFolio.innerText = courseRecord.code || 'CEUT-01';
+            if (playerTitle) playerTitle.innerText = courseRecord.title || 'Curso de Capacitación CEUT';
+            if (playerDates) playerDates.innerText = `${courseRecord.startDate || '--/--/----'} al ${courseRecord.endDate || '--/--/----'}`;
+            if (playerTimes) playerTimes.innerText = `${courseRecord.startTime || '08:00'} a ${courseRecord.endTime || '20:00'}`;
+
+            // Check completion card & progress percentage
+            const userScore = userRecord.score || 0;
+            const progressEl = document.getElementById('playerProgressPercentage');
+            if (progressEl) progressEl.innerText = `${userScore}%`;
+
+            const completionCard = document.getElementById('courseCompletionCard');
+            if (completionCard) {
+                if (userScore >= 80) {
+                    completionCard.classList.remove('hidden');
+                } else {
+                    completionCard.classList.add('hidden');
+                }
+            }
+
+            // Load module 0 by default
+            window.loadModuleInPlayer(0);
+        };
+
+        // HANDLE LOGIN FOR EXISTING USER
+        window.handleExistingUserLogin = function(event) {
+            if (event) event.preventDefault();
+
+            const emailInput = document.getElementById('loginEmail');
+            const passInput = document.getElementById('loginPassword');
+            const errMsg = document.getElementById('loginAuthErrMsg');
+
+            if (!emailInput || !passInput) return;
+
+            const email = emailInput.value.trim().toLowerCase();
+            const pass = passInput.value.trim();
+
+            const users = Array.isArray(window.registeredUsers) ? window.registeredUsers : [];
+            let user = users.find(u => u.email && u.email.toLowerCase() === email && u.password === pass);
+
+            if (!user) {
+                // Dynamic Session fallback if valid format
+                if (email.includes('@')) {
+                    user = {
+                        id: 'usr_' + Date.now(),
+                        name: email.split('@')[0],
+                        email: email,
+                        password: pass,
+                        score: 0,
+                        hasAttempted: false
+                    };
+                    if (window.saveUserToFirestore) window.saveUserToFirestore(user);
+                } else {
+                    if (errMsg) errMsg.classList.remove('hidden');
+                    return;
+                }
+            }
+
+            if (errMsg) errMsg.classList.add('hidden');
+
+            const courses = Array.isArray(window.coursesData) ? window.coursesData : [];
+            const course = window.activeSelectedCourseForEnrollment || courses[0] || {
+                id: 'course_default',
+                title: 'Curso de Capacitación Institucional',
+                code: 'CEUT-01',
+                modules: [{ title: 'Módulo 1: Introducción', videoUrl: '', questions: [] }]
+            };
+
+            window.startCourseSession(user, course);
+        };
+
+        // HANDLE NEW USER REGISTRATION
+        window.handleUserRegistration = function(event) {
+            if (event) event.preventDefault();
+
+            const title = document.getElementById('regAcademicTitle').value;
+            const name = document.getElementById('regFullName').value.trim();
+            const email = document.getElementById('regEmail').value.trim().toLowerCase();
+            const pass = document.getElementById('regPassword').value.trim();
+
+            const newUser = {
+                id: 'usr_' + Date.now(),
+                name: `${title} ${name}`.trim(),
+                email: email,
+                password: pass,
+                score: 0,
+                hasAttempted: false,
+                registeredAt: new Date().toISOString()
+            };
+
+            if (window.saveUserToFirestore) {
+                window.saveUserToFirestore(newUser);
+            }
+
+            const courses = Array.isArray(window.coursesData) ? window.coursesData : [];
+            const course = window.activeSelectedCourseForEnrollment || courses[0];
+
+            window.startCourseSession(newUser, course);
+        };
+
+        // RENDER MODULE QUESTIONS IN PLAYER
+        window.renderModuleQuestions = function(questions) {
+            const container = document.getElementById('evaluationContainer');
+            const questionsList = document.getElementById('quizQuestionsList');
+            const attemptNotice = document.getElementById('attemptNoticeBox');
+            const btnSubmit = document.getElementById('btnSubmitQuiz');
+
+            if (!container || !questionsList) return;
+
+            if (!questions || questions.length === 0) {
+                container.classList.add('hidden');
+                return;
+            }
+
+            container.classList.remove('hidden');
+
+            // Check single attempt limit
+            if (window.currentUser && window.currentUser.hasAttempted) {
+                if (attemptNotice) attemptNotice.classList.remove('hidden');
+                if (btnSubmit) {
+                    btnSubmit.disabled = true;
+                    btnSubmit.className = "w-full py-3 bg-slate-400 text-white font-bold rounded-lg cursor-not-allowed";
+                    btnSubmit.innerHTML = `<span><i class="fa-solid fa-lock mr-2"></i> Evaluación Ya Presentada (Oportunidad Única Agotada)</span>`;
+                }
+            } else {
+                if (attemptNotice) attemptNotice.classList.add('hidden');
+                if (btnSubmit) {
+                    btnSubmit.disabled = false;
+                    btnSubmit.className = "w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow-md transition-colors flex items-center justify-center gap-2";
+                    btnSubmit.innerHTML = `<i class="fa-solid fa-floppy-disk"></i><span>Guardar y Registrar Evaluación de Módulo (Única Oportunidad)</span>`;
+                }
+            }
+
+            questionsList.innerHTML = questions.map((q, idx) => `
+                <div class="bg-white p-4 rounded-xl border border-slate-200 space-y-3 shadow-sm">
+                    <span class="text-xs font-bold text-ceut-navy block">Pregunta #${idx + 1}: ${q.question || q.text || ''}</span>
+                    
+                    ${q.type === 'multiple' ? `
+                        <div class="space-y-1.5 text-xs">
+                            ${(q.options || []).map((opt, oIdx) => `
+                                <label class="flex items-center space-x-2 p-2 rounded-lg border border-slate-100 hover:bg-amber-50 cursor-pointer">
+                                    <input type="radio" name="q_${idx}" value="${oIdx}" class="text-ceut-navy focus:ring-ceut-navy">
+                                    <span>${opt}</span>
+                                </label>
+                            `).join('')}
+                        </div>
+                    ` : q.type === 'boolean' ? `
+                        <div class="flex gap-4 text-xs font-bold">
+                            <label class="flex items-center space-x-2 p-2.5 rounded-lg border border-slate-200 hover:bg-amber-50 cursor-pointer flex-1">
+                                <input type="radio" name="q_${idx}" value="true" class="text-ceut-navy">
+                                <span>Verdadero</span>
+                            </label>
+                            <label class="flex items-center space-x-2 p-2.5 rounded-lg border border-slate-200 hover:bg-amber-50 cursor-pointer flex-1">
+                                <input type="radio" name="q_${idx}" value="false" class="text-ceut-navy">
+                                <span>Falso</span>
+                            </label>
+                        </div>
+                    ` : `
+                        <div class="space-y-2 text-xs">
+                            <p class="text-[11px] text-slate-500 italic">Ordena los pasos del 1 al 4 seleccionando el número correspondiente:</p>
+                            ${[q.step1, q.step2, q.step3, q.step4].filter(Boolean).map((step, sIdx) => `
+                                <div class="flex items-center gap-2 bg-slate-50 p-2 rounded-lg border border-slate-200">
+                                    <select name="q_${idx}_step_${sIdx}" class="p-1 text-xs border border-slate-300 rounded font-bold text-ceut-navy">
+                                        <option value="1">Paso 1</option>
+                                        <option value="2">Paso 2</option>
+                                        <option value="3">Paso 3</option>
+                                        <option value="4">Paso 4</option>
+                                    </select>
+                                    <span class="font-medium">${step}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `}
+                </div>
+            `).join('');
+        };
+
+        // QUIZ SUBMIT & SCORE COMPUTATION (80% THRESHOLD)
+        window.handleQuizSubmit = function(event) {
+            if (event) event.preventDefault();
+
+            if (window.currentUser && window.currentUser.hasAttempted) {
+                alert('Ya has utilizado tu única oportunidad para presentar esta evaluación.');
+                return;
+            }
+
+            const currentMod = window.currentCourse.modules[window.currentModuleIndex];
+            const questions = currentMod.questions || [];
+            if (questions.length === 0) return;
+
+            let correctCount = 0;
+
+            questions.forEach((q, idx) => {
+                if (q.type === 'multiple') {
+                    const selected = document.querySelector(`input[name="q_${idx}"]:checked`);
+                    if (selected && parseInt(selected.value) === parseInt(q.correctIndex)) {
+                        correctCount++;
+                    }
+                } else if (q.type === 'boolean') {
+                    const selected = document.querySelector(`input[name="q_${idx}"]:checked`);
+                    if (selected && selected.value === String(q.correctValue)) {
+                        correctCount++;
+                    }
+                } else if (q.type === 'reorder') {
+                    let allCorrect = true;
+                    [0, 1, 2, 3].forEach(sIdx => {
+                        const sel = document.querySelector(`select[name="q_${idx}_step_${sIdx}"]`);
+                        if (sel && parseInt(sel.value) !== (sIdx + 1)) {
+                            allCorrect = false;
+                        }
+                    });
+                    if (allCorrect) correctCount++;
+                }
+            });
+
+            const computedPercentage = Math.round((correctCount / questions.length) * 100);
+
+            // Update user state
+            if (window.currentUser) {
+                window.currentUser.score = computedPercentage;
+                window.currentUser.hasAttempted = true;
+
+                if (window.saveUserToFirestore) {
+                    window.saveUserToFirestore(window.currentUser);
+                }
+            }
+
+            // Update UI
+            const progressEl = document.getElementById('playerProgressPercentage');
+            if (progressEl) progressEl.innerText = `${computedPercentage}%`;
+
+            const completionCard = document.getElementById('courseCompletionCard');
+            if (completionCard) {
+                if (computedPercentage >= 80) {
+                    completionCard.classList.remove('hidden');
+                } else {
+                    completionCard.classList.add('hidden');
+                }
+            }
+
+            window.renderModuleQuestions(questions);
+
+            if (computedPercentage >= 80) {
+                alert(`¡Felicidades! Has aprobado con ${computedPercentage}%. Ya puedes descargar tu constancia oficial.`);
+            } else {
+                alert(`Has obtenido un puntaje de ${computedPercentage}%. Se requiere mínimo un 80% para obtener la constancia.`);
+            }
+        };
+
+        // SIMULATE VIDEO COMPLETION
+        window.simulateVideoProgress = function() {
+            const badge = document.getElementById('videoStatusBadge');
+            if (badge) {
+                badge.className = "text-xs px-2.5 py-1 rounded-full font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1";
+                badge.innerHTML = `<i class="fa-solid fa-check-circle text-emerald-600"></i> Video Concluido`;
+            }
+            alert('¡Reproducción completada! Las preguntas de evaluación han sido habilitadas.');
+        };
+
+        // ADMIN USER TABLE RENDERER WITH DYNAMIC CERTIFICATE VIEWING BUTTON
+        window.renderUsersMasterTable = function() {
+            const tbody = document.getElementById('usersMasterTableBody');
+            const totalBadge = document.getElementById('totalUsersBadge');
+            if (!tbody) return;
+
+            const users = Array.isArray(window.registeredUsers) ? window.registeredUsers : [];
+            if (totalBadge) totalBadge.innerText = `${users.length} Registrados`;
+
+            if (users.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="p-4 text-center text-slate-400 italic">No hay participantes registrados en la base de datos.</td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = users.map(u => {
+                const score = u.score || 0;
+                const isPassed = score >= 80;
+
+                return `
+                    <tr class="hover:bg-slate-50 border-b border-slate-100">
+                        <td class="p-3 font-bold text-ceut-navy">${u.name || 'Sin nombre'}</td>
+                        <td class="p-3 font-mono text-slate-600">${u.email || '--'}</td>
+                        <td class="p-3 font-bold"><span class="px-2 py-0.5 bg-amber-100 text-amber-900 rounded text-[10px]">${u.profile || 'DOC'}</span></td>
+                        <td class="p-3 font-mono font-bold text-ceut-purple">${u.password || '----'}</td>
+                        <td class="p-3 font-mono text-slate-500">${u.folio || 'CEUT_DOC_01'}</td>
+                        <td class="p-3">
+                            <div class="flex items-center gap-2">
+                                <span class="font-black ${isPassed ? 'text-emerald-600' : 'text-amber-600'}">${score}%</span>
+                                ${isPassed ? `
+                                    <button onclick="window.viewUserCertificate('${u.name.replace(/'/g, "\\'")}', ${score})" class="px-2.5 py-1 bg-ceut-gold hover:bg-ceut-goldDark text-ceut-navy font-black text-[10px] rounded-md shadow flex items-center gap-1 uppercase tracking-wider">
+                                        <i class="fa-solid fa-certificate"></i> Ver Constancia
+                                    </button>
+                                ` : '<span class="text-[10px] text-slate-400">En progreso (<80%)</span>'}
+                            </div>
+                        </td>
+                        <td class="p-3 text-center">
+                            <button onclick="window.deleteUserRecord('${u.id}')" class="px-2 py-1 bg-red-100 hover:bg-red-200 text-red-700 rounded font-bold text-[11px]">
+                                <i class="fa-solid fa-trash"></i> Eliminar
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        };
+
+        window.viewUserCertificate = function(userName, score) {
+            window.switchAdminSubTab('certDesign');
+            const certNameInput = document.getElementById('certInputName');
+            if (certNameInput) {
+                certNameInput.value = userName;
+                window.updateCertificatePreview();
+            }
+        };
+
+        window.updateCertificatePreview = function() {
+            const nameDisplay = document.getElementById('certNameDisplay');
+            const reasonDisplay = document.getElementById('certReasonDisplay');
+            const dateDisplay = document.getElementById('certDateDisplay');
+            const folioDisplay = document.getElementById('certFolioCode');
+
+            const nameVal = document.getElementById('certInputName')?.value || 'Nombre del Participante';
+            const reasonVal = document.getElementById('certInputReason')?.value || '';
+            const roleVal = document.getElementById('certInputRole')?.value || 'DOC';
+            const numVal = document.getElementById('certInputCourseNum')?.value || '01';
+            const dateVal = document.getElementById('certInputDate')?.value || new Date().toISOString().split('T')[0];
+
+            if (nameDisplay) nameDisplay.innerText = nameVal;
+            if (reasonDisplay) reasonDisplay.innerText = reasonVal;
+            if (dateDisplay) dateDisplay.innerText = dateVal;
+            if (folioDisplay) folioDisplay.innerText = `CEUT_${roleVal}_${numVal}_001`;
+        };
+
+        window.changeCertTextColor = function(hexColor) {
+            const certCanvas = document.getElementById('certificateCanvas');
+            if (certCanvas) {
+                certCanvas.querySelectorAll('.cert-text-white, h3, p, span').forEach(el => {
+                    el.style.color = hexColor;
+                });
+            }
+        };
+
+        window.downloadStudentCertificate = function() {
+            window.switchAdminSubTab('certDesign');
+            if (window.currentUser && window.currentUser.name) {
+                const certNameInput = document.getElementById('certInputName');
+                if (certNameInput) {
+                    certNameInput.value = window.currentUser.name;
+                    window.updateCertificatePreview();
+                }
+            }
+            window.print();
+        };
+
+        window.deleteUserRecord = function(userId) {
+            if (confirm('¿Estás seguro de que deseas eliminar permanentemente a este usuario?')) {
+                if (window.deleteUserFromFirestore) {
+                    window.deleteUserFromFirestore(userId);
+                }
+            }
+        };
+
+        // CERTIFICATE CANVAS RUBRIC DRAG & DROP
+        window.initDrag = function(e, elementId) {
+            e.preventDefault();
+            const el = document.getElementById(elementId);
+            if (!el) return;
+
+            let startX = e.clientX;
+            let startY = e.clientY;
+            let startLeft = el.offsetLeft;
+            let startTop = el.offsetTop;
+
+            function onMouseMove(moveEvent) {
+                const dx = moveEvent.clientX - startX;
+                const dy = moveEvent.clientY - startY;
+                el.style.left = `${startLeft + dx}px`;
+                el.style.top = `${startTop + dy}px`;
+            }
+
+            function onMouseUp() {
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+            }
+
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+        };
+    </script>
 </body>
 </html>

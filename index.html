@@ -960,7 +960,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, setDoc, deleteDoc, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // CONFIGURACIÓN OFICIAL PROJECCRECE-CEUT
         const firebaseConfig = {
@@ -972,15 +972,11 @@
             appId: "1:687215027724:web:781d13330d62d443603029"
         };
 
-        // INICIALIZACIÓN DE FIREBASE Y PERMISOS DE FIRESTORE
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-
-        // APLICACIÓN DE RUTAS Y CONSTANTES DE SEGURIDAD FIRESTORE (RULE 1)
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'projeccrece-ceut';
         
-        // ACTUALIZADOR DE PESTAÑA / BADGE EN TIEMPO REAL SEGÚN EL ESTADO DE CONEXIÓN
         function updateDbStatusUI(state) {
             const dot = document.getElementById('dbStatusDot');
             const text = document.getElementById('dbStatusText');
@@ -1001,11 +997,9 @@
             }
         }
 
-        // Monitorear conexión del navegador
         window.addEventListener('online', () => updateDbStatusUI(auth.currentUser ? 'cloud' : 'connecting'));
         window.addEventListener('offline', () => updateDbStatusUI('offline'));
 
-        // AUTENTICACIÓN INICIAL OBLIGATORIA EN NUBE (RULE 3)
         async function initAuth() {
             updateDbStatusUI('connecting');
             try {
@@ -1025,7 +1019,6 @@
         }
         initAuth();
 
-        // ESCUCHA EN TIEMPO REAL 100% FIRESTORE (RULE 1 & RULE 2)
         onAuthStateChanged(auth, (user) => {
             if (!user) {
                 updateDbStatusUI('offline');
@@ -1037,7 +1030,6 @@
             const publicCoursesRef = collection(db, 'artifacts', appId, 'public', 'data', 'courses');
             const publicUsersRef = collection(db, 'artifacts', appId, 'public', 'data', 'users');
             
-            // Suscripción directa de Cursos en la Nube
             onSnapshot(publicCoursesRef, (snapshot) => {
                 const loadedCourses = [];
                 snapshot.forEach(docSnap => {
@@ -1052,7 +1044,6 @@
                 updateDbStatusUI('offline');
             });
 
-            // Suscripción directa de Usuarios en la Nube
             onSnapshot(publicUsersRef, (snapshot) => {
                 const loadedUsers = [];
                 snapshot.forEach(docSnap => {
@@ -1067,7 +1058,6 @@
             });
         });
 
-        // OPERACIONES EXCLUSIVAS DE NUBE FIRESTORE
         window.saveCourseToFirestore = async function(courseData) {
             if (!auth.currentUser) return;
             const courseDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'courses', courseData.id);
@@ -1094,308 +1084,42 @@
     </script>
 
     <script>
-        // GLOBAL DATA & INITIAL STATE
-        window.coursesData = [];
-        window.registeredUsers = [];
-        window.currentTab = 'DOC';
-        window.currentCourse = null;
-        window.currentModuleIndex = 0;
-        window.activeSelectedCourseForEnrollment = null;
-        window.isAdminLoggedIn = false;
-        window.currentUserRecord = null;
-
-        // DRAG & DROP CERTIFICATE VARIABLES
-        let isDragging = false;
-        let currentDragElement = null;
-        let dragOffsetX = 0;
-        let dragOffsetY = 0;
-
-        // Temporary builder state
-        window.currentCourseModules = [];
-        window.currentEditingQuestions = [];
-        window.activeResourceInputMode = 'file';
-        window.editingQuestionIndex = -1;
-
-<!-- ... existing code -->
-
-        window.deleteCourseRecord = function(courseId) {
-            if (confirm(`¿Estás seguro de eliminar permanentemente el curso ${courseId} de la nube?`)) {
-                if (window.deleteCourseFromFirestore) {
-                    window.deleteCourseFromFirestore(courseId);
-                }
-            }
-        };
-
-        // USER MANAGEMENT FUNCTIONS
-        window.renderUsersMasterTable = function() {
-            const tbody = document.getElementById('usersMasterTableBody');
-            const totalBadge = document.getElementById('totalUsersBadge');
-            if (totalBadge) totalBadge.innerText = `${window.registeredUsers.length} Registrados en Nube`;
-            if (!tbody) return;
-
-            if (window.registeredUsers.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-400 italic">No hay alumnos ni participantes registrados en la base de datos en la nube.</td></tr>`;
-                return;
-            }
-
-            tbody.innerHTML = window.registeredUsers.map((user, idx) => {
-                const score = user.score !== undefined ? user.score : (user.progress || 0);
-                const isApproved = score >= 80;
-
-                return `
-                <tr class="border-b border-slate-100 hover:bg-slate-50">
-                    <td class="p-3 font-bold text-slate-800">${user.academicTitle ? user.academicTitle + ' ' : ''}${user.fullName}</td>
-                    <td class="p-3 text-slate-600">${user.email}</td>
-                    <td class="p-3"><span class="px-2 py-0.5 bg-slate-100 text-slate-800 font-bold rounded text-[10px]">${user.roleCategory || 'ALUMNO'}</span></td>
-                    <td class="p-3 font-mono text-slate-700">
-                        <div class="flex items-center gap-1">
-                            <input type="text" value="${user.password || '123456'}" id="userPassInput_${idx}" class="w-24 p-1 text-xs border border-slate-300 rounded font-mono">
-                            <button onclick="window.updateUserPassword('${user.id}', ${idx})" class="p-1 text-emerald-600 hover:text-emerald-800" title="Guardar Contraseña en Nube">
-                                <i class="fa-solid fa-floppy-disk"></i>
-                            </button>
-                        </div>
-                    </td>
-                    <td class="p-3 font-mono font-bold text-ceut-navy">${user.folio || 'CEUT_DOC_01_001'}</td>
-                    <td class="p-3">
-                        <div class="flex flex-col gap-1">
-                            <span class="px-2 py-0.5 rounded font-bold text-xs inline-block w-fit ${isApproved ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">
-                                ${score}% ${isApproved ? '(Aprobado ≥ 80%)' : '(En proceso)'}
-                            </span>
-                            ${isApproved ? `
-                                <button onclick="window.viewUserCertificate('${user.id}')" class="mt-1 px-2.5 py-1 bg-ceut-navy hover:bg-ceut-purple text-ceut-gold font-bold rounded text-[10px] flex items-center gap-1 shadow-sm w-fit">
-                                    <i class="fa-solid fa-certificate"></i> Ver Constancia
-                                </button>
-                            ` : '<span class="text-[10px] text-slate-400 italic">Mínimo 80% para constancia</span>'}
-                        </div>
-                    </td>
-                    <td class="p-3 text-center">
-                        <button onclick="window.deleteUserRecord('${user.id}')" class="px-2.5 py-1 bg-red-100 text-red-700 hover:bg-red-200 rounded font-bold text-[11px] transition-colors">
-                            <i class="fa-solid fa-trash-can mr-1"></i> Eliminar Nube
-                        </button>
-                    </td>
-                </tr>
-            `;
-            }).join('');
-        };
-
-        window.handleSaveCourse = function(event) {
-            if (event) event.preventDefault();
-
-            const roleCategory = document.getElementById('courseRoleCategory').value;
-            const courseCodeNum = document.getElementById('courseCodeNum').value.trim();
-            const courseId = `CEUT_${roleCategory}_${courseCodeNum.padStart(2, '0')}`;
-            const title = document.getElementById('courseTitleInput').value.trim();
-            const imageUrl = document.getElementById('courseImageUrlInput').value.trim();
-            const description = document.getElementById('courseDescInput').value.trim();
-            const startDate = document.getElementById('courseStartDate').value;
-            const endDate = document.getElementById('courseEndDate').value;
-            const startTime = document.getElementById('courseStartTime').value;
-            const endTime = document.getElementById('courseEndTime').value;
-
-            if (window.currentCourseModules.length === 0) {
-                alert("Debes agregar al menos un módulo con sus reactivos para publicar el curso.");
-                return;
-            }
-
-            const courseData = {
-                id: courseId,
-                roleCategory: roleCategory,
-                title: title,
-                imageUrl: imageUrl || 'https://placehold.co/600x400/1B1446/F5B000?text=Curso+CEUT',
-                description: description,
-                startDate: startDate,
-                endDate: endDate,
-                startTime: startTime,
-                endTime: endTime,
-                modules: JSON.parse(JSON.stringify(window.currentCourseModules)),
-                updatedAt: new Date().toISOString()
-            };
-
-            // Save directly to Firestore Cloud Database
-            if (window.saveCourseToFirestore) {
-                window.saveCourseToFirestore(courseData);
-            }
-
-            alert(`¡Curso ${courseId} guardado exitosamente en la nube!`);
-            window.resetCourseFormState();
-        };
-
-        window.handleUserRegistration = async function(event) {
-            if (event) event.preventDefault();
-
-            const title = document.getElementById('regAcademicTitle').value;
-            const name = document.getElementById('regFullName').value.trim();
-            const email = document.getElementById('regEmail').value.trim().toLowerCase();
-            const password = document.getElementById('regPassword').value.trim();
-
-            const course = window.activeSelectedCourseForEnrollment;
-            if (!course) return;
-
-            const existingUser = window.registeredUsers.find(u => (u.email || '').toLowerCase() === email);
-            let userRecord;
-
-            if (existingUser) {
-                userRecord = existingUser;
-                userRecord.academicTitle = title || userRecord.academicTitle;
-                userRecord.fullName = name || userRecord.fullName;
-                userRecord.password = password || userRecord.password;
-            } else {
-                userRecord = {
-                    id: 'usr_' + Date.now(),
-                    academicTitle: title,
-                    fullName: name,
-                    email: email,
-                    password: password,
-                    roleCategory: course.roleCategory || 'DOC',
-                    folio: `${course.id}_${Math.floor(100 + Math.random() * 900)}`,
-                    score: 0,
-                    progress: 0,
-                    hasAttempted: false,
-                    registeredAt: new Date().toISOString()
-                };
-            }
-
-            // Sync user state directly with Cloud Database
-            if (window.saveUserToFirestore) {
-                await window.saveUserToFirestore(userRecord);
-            }
-
-            window.currentUserRecord = userRecord;
-            window.closeRegistrationModal();
-            window.handleExistingUserLogin(null);
-        };
-
-        window.handleExistingUserLogin = function(event) {
-            if (event) event.preventDefault();
-
-            const emailInput = document.getElementById('loginEmail');
-            const passwordInput = document.getElementById('loginPassword');
-            const err = document.getElementById('loginAuthErrMsg');
-
-            if (!emailInput || !passwordInput) return;
-
-            const email = emailInput.value.trim().toLowerCase();
-            const password = passwordInput.value.trim();
-
-            const course = window.activeSelectedCourseForEnrollment;
-            if (!course) {
-                alert("Por favor selecciona un curso del catálogo primero.");
-                return;
-            }
-
-            // Search user directly from synchronized cloud state
-            let user = window.registeredUsers.find(u => 
-                (u.email || '').toLowerCase() === email && (u.password || '') === password
-            );
-
-            if (!user) {
-                user = window.registeredUsers.find(u => (u.email || '').toLowerCase() === email);
-                if (user && user.password && user.password !== password) {
-                    if (err) {
-                        err.innerText = "La contraseña introducida es incorrecta.";
-                        err.classList.remove('hidden');
+        // ESTADO GLOBAL ÚNICO
+        window.coursesData = window.coursesData || [
+            {
+                id: 'CEUT_DOC_01',
+                roleCategory: 'DOC',
+                title: 'Capacitación Psicopedagógica Institucional',
+                description: 'Desarrollo de estrategias pedagógicas avanzadas y habilidades psicoeducativas para docentes CEUT.',
+                imageUrl: 'https://placehold.co/600x400/1B1446/F5B000?text=Curso+Docentes',
+                startDate: '2026-01-15',
+                endDate: '2026-12-20',
+                startTime: '08:00',
+                endTime: '20:00',
+                modules: [
+                    {
+                        title: 'Módulo 1: Introducción a la Capacitación Psicopedagógica',
+                        videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+                        materialUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+                        questions: [
+                            {
+                                type: 'multiple',
+                                questionText: '¿Cuál es el objetivo principal del acompañamiento psicopedagógico?',
+                                options: [
+                                    'Potenciar el desarrollo integral y el aprendizaje del estudiante',
+                                    'Automatizar únicamente las calificaciones',
+                                    'Reemplazar la labor directiva',
+                                    'Ninguna de las anteriores'
+                                ],
+                                correctIndex: 0,
+                                feedback: 'El acompañamiento psicopedagógico busca potenciar el aprendizaje integral adaptado al estudiante.'
+                            }
+                        ]
                     }
-                    return;
-                }
+                ]
             }
+        ];
 
-            if (!user) {
-                user = {
-                    id: 'usr_' + Date.now(),
-                    fullName: email.split('@')[0].toUpperCase(),
-                    email: email,
-                    password: password,
-                    academicTitle: '',
-                    roleCategory: course.roleCategory || window.currentTab || 'DOC',
-                    folio: `${course.id}_${Math.floor(100 + Math.random() * 900)}`,
-                    score: 0,
-                    progress: 0,
-                    hasAttempted: false,
-                    registeredAt: new Date().toISOString()
-                };
-                if (window.saveUserToFirestore) {
-                    window.saveUserToFirestore(user);
-                }
-            }
-
-            if (err) err.classList.add('hidden');
-
-            window.currentUserRecord = user;
-            window.closeRegistrationModal();
-
-            // Set up Player details safely
-            window.currentCourse = course;
-            window.currentCourseScores = {};
-
-            const folioEl = document.getElementById('playerCourseFolio');
-            const titleEl = document.getElementById('playerCourseTitle');
-            const datesEl = document.getElementById('playerCourseDates');
-            const timesEl = document.getElementById('playerCourseTimes');
-            const progressEl = document.getElementById('playerProgressPercentage');
-
-            if (folioEl) folioEl.innerText = course.id;
-            if (titleEl) titleEl.innerText = course.title;
-            if (datesEl) datesEl.innerText = `${course.startDate || '--'} al ${course.endDate || '--'}`;
-            if (timesEl) timesEl.innerText = `${course.startTime || '08:00'} a ${course.endTime || '20:00'}`;
-            if (progressEl) progressEl.innerText = `${user.score || user.progress || 0}%`;
-
-            // Switch view from catalog to player
-            const secCat = document.getElementById('section-catalog');
-            const secPlay = document.getElementById('section-player');
-            const secAdm = document.getElementById('section-admin');
-
-            if (secCat) secCat.classList.add('hidden');
-            if (secAdm) secAdm.classList.add('hidden');
-            if (secPlay) secPlay.classList.remove('hidden');
-
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-
-            if (typeof window.loadModuleInPlayer === 'function') {
-                window.loadModuleInPlayer(0);
-            }
-        };
-
-        window.updateUserPassword = function(userId, index) {
-            const input = document.getElementById(`userPassInput_${index}`);
-            if (!input) return;
-            const newPass = input.value.trim();
-            const user = window.registeredUsers.find(u => u.id === userId);
-            if (user) {
-                user.password = newPass;
-                if (window.saveUserToFirestore) {
-                    window.saveUserToFirestore(user);
-                }
-                alert("Contraseña actualizada y sincronizada en la nube con éxito.");
-            }
-        };
-
-        window.deleteUserRecord = function(userId) {
-            if (confirm("¿Estás seguro de eliminar este registro de usuario permanentemente de la nube?")) {
-                if (window.deleteUserFromFirestore) {
-                    window.deleteUserFromFirestore(userId);
-                }
-            }
-        };
-
-        window.saveUserToFirestore = async function(userData) {
-            if (!auth.currentUser || !navigator.onLine) {
-                updateDbStatusUI('local');
-                return;
-            }
-            try {
-                const userDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', userData.id);
-                await setDoc(userDocRef, userData, { merge: true });
-                updateDbStatusUI('cloud');
-            } catch (err) {
-                console.error("Error al guardar usuario en Firestore:", err);
-                updateDbStatusUI('local');
-            }
-        };
-    </script>
-
-    <script>
-        // GLOBAL DATA & INITIAL STATE
-        window.coursesData = window.coursesData || [];
         window.registeredUsers = window.registeredUsers || [];
         window.currentTab = 'DOC';
         window.currentCourse = null;
@@ -1403,24 +1127,34 @@
         window.activeSelectedCourseForEnrollment = null;
         window.isAdminLoggedIn = false;
         window.currentUserRecord = null;
-
-        // DRAG & DROP CERTIFICATE VARIABLES
-        let isDragging = false;
-        let currentDragElement = null;
-        let dragOffsetX = 0;
-        let dragOffsetY = 0;
-
-        // Temporary builder state
         window.currentCourseModules = [];
         window.currentEditingQuestions = [];
         window.activeResourceInputMode = 'file';
         window.editingQuestionIndex = -1;
 
-        // NAVIGATION & MODAL GLOBAL HANDLERS
+        // DRAG & DROP CERTIFICATE VARIABLES
+        var isDragging = false;
+        var currentDragElement = null;
+        var dragOffsetX = 0;
+        var dragOffsetY = 0;
+
+        // FORMAT EMBED YOUTUBE URL HELPER
+        window.formatEmbedUrl = function(url) {
+            if (!url) return '';
+            if (url.includes('youtube.com/watch?v=')) {
+                const videoId = url.split('v=')[1].split('&')[0];
+                return `https://www.youtube.com/embed/${videoId}`;
+            } else if (url.includes('youtu.be/')) {
+                const videoId = url.split('youtu.be/')[1].split('?')[0];
+                return `https://www.youtube.com/embed/${videoId}`;
+            }
+            return url;
+        };
+
+        // NAVIGATION TABS SWITCHER
         window.selectCategoryTab = function(categoryCode) {
             window.currentTab = categoryCode;
 
-            // Highlight tab button
             ['DOC', 'AUL', 'ADM'].forEach(cat => {
                 const btn = document.getElementById(`nav-btn-${cat}`);
                 if (btn) {
@@ -1432,7 +1166,6 @@
                 }
             });
 
-            // Update Header titles according to category
             const titleHeader = document.getElementById('catalogTitleHeader');
             const subHeader = document.getElementById('catalogSubHeader');
             const badge = document.getElementById('activeCategoryBadge');
@@ -1449,7 +1182,6 @@
                 if (badge) badge.innerText = `CATEGORÍA: ${categoryNames[categoryCode].label}`;
             }
 
-            // Ensure catalog is visible and player/admin sections are hidden
             const secCat = document.getElementById('section-catalog');
             const secPlay = document.getElementById('section-player');
             const secAdm = document.getElementById('section-admin');
@@ -1461,193 +1193,6 @@
             window.renderCatalog();
         };
 
-        window.openAdminPortal = function() {
-            if (window.isAdminLoggedIn) {
-                window.showAdminView();
-            } else {
-                const modal = document.getElementById('adminAuthModal');
-                if (modal) modal.classList.remove('hidden');
-            }
-        };
-
-        window.closeAdminAuthModal = function() {
-            const modal = document.getElementById('adminAuthModal');
-            if (modal) modal.classList.add('hidden');
-        };
-
-        window.verifyAdminPass = function(event) {
-            if (event) event.preventDefault();
-            const input = document.getElementById('adminPassInput');
-            const err = document.getElementById('adminAuthErr');
-            if (input && input.value === 'jcas1015') {
-                window.isAdminLoggedIn = true;
-                if (err) err.classList.add('hidden');
-                window.closeAdminAuthModal();
-                window.showAdminView();
-            } else {
-                if (err) err.classList.remove('hidden');
-            }
-        };
-
-        window.showAdminView = function() {
-            const secCat = document.getElementById('section-catalog');
-            const secPlay = document.getElementById('section-player');
-            const secAdm = document.getElementById('section-admin');
-
-            if (secCat) secCat.classList.add('hidden');
-            if (secPlay) secPlay.classList.add('hidden');
-            if (secAdm) secAdm.classList.remove('hidden');
-
-            window.switchAdminSubTab('users');
-        };
-
-        // SUB-TAB SWITCHER IN ADMIN PORTAL
-        window.switchAdminSubTab = function(subTab) {
-            const views = ['users', 'courses', 'certDesign'];
-            views.forEach(v => {
-                const viewEl = document.getElementById(`adminSubView-${v}`);
-                const btnEl = document.getElementById(`adminSubBtn-${v}`);
-                if (viewEl) viewEl.classList.toggle('hidden', v !== subTab);
-                if (btnEl) {
-                    if (v === subTab) {
-                        btnEl.className = "pb-3 font-bold text-sm text-ceut-navy border-b-2 border-ceut-gold flex items-center gap-2";
-                    } else {
-                        btnEl.className = "pb-3 font-medium text-sm text-slate-500 hover:text-ceut-navy flex items-center gap-2";
-                    }
-                }
-            });
-
-            if (subTab === 'users') window.renderUsersMasterTable();
-            if (subTab === 'courses') window.renderAdminCoursesGrid();
-            if (subTab === 'certDesign') window.updateCertificatePreview();
-        };
-
-        // RENDER ADMIN COURSES GRID WITH EDIT & DELETE CONTROLS
-        window.renderAdminCoursesGrid = function() {
-            const grid = document.getElementById('adminCoursesManageGrid');
-            if (!grid) return;
-
-            if (window.coursesData.length === 0) {
-                grid.innerHTML = `
-                    <div class="col-span-1 md:col-span-2 bg-white p-6 rounded-xl border border-slate-200 text-center text-slate-400 italic">
-                        No hay cursos registrados para administrar. Presiona "Diseñar Nuevo Curso" para agregar uno.
-                    </div>
-                `;
-                return;
-            }
-
-            grid.innerHTML = window.coursesData.map(course => `
-                <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between space-y-4">
-                    <div class="space-y-2">
-                        <div class="flex justify-between items-start gap-2">
-                            <span class="px-2.5 py-1 bg-ceut-navy text-ceut-gold font-mono font-bold text-xs rounded-lg">${course.id}</span>
-                            <span class="px-2.5 py-1 bg-amber-100 text-amber-900 font-bold text-[10px] rounded-lg">Categoría: ${course.roleCategory || 'DOC'}</span>
-                        </div>
-                        <h4 class="font-bold text-ceut-navy text-sm">${course.title}</h4>
-                        <p class="text-xs text-slate-500 line-clamp-2">${course.description}</p>
-                        <div class="text-[11px] text-slate-400 font-medium">
-                            ${(course.modules || []).length} Módulo(s) configurado(s)
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-2 pt-3 border-t border-slate-100">
-                        <button onclick="window.editCourseRecord('${course.id}')" class="flex-1 py-2 bg-ceut-navy hover:bg-ceut-purple text-white font-bold text-xs rounded-lg flex items-center justify-center gap-1.5 transition-colors">
-                            <i class="fa-solid fa-pen-to-square text-ceut-gold"></i> Editar Curso
-                        </button>
-                        <button onclick="window.deleteCourseRecord('${course.id}')" class="py-2 px-3 bg-red-100 hover:bg-red-200 text-red-700 font-bold text-xs rounded-lg flex items-center justify-center gap-1.5 transition-colors">
-                            <i class="fa-solid fa-trash-can"></i> Eliminar
-                        </button>
-                    </div>
-                </div>
-            `).join('');
-        };
-
-        // EDIT COURSE RECORD FUNCTION
-        window.editCourseRecord = function(courseId) {
-            const course = window.coursesData.find(c => c.id === courseId);
-            if (!course) return;
-
-            window.switchAdminSubTab('courses');
-            const formContainer = document.getElementById('newCourseFormContainer');
-            if (formContainer && formContainer.classList.contains('hidden')) {
-                formContainer.classList.remove('hidden');
-            }
-
-            const headerTitle = document.getElementById('courseFormModeHeaderTitle');
-            if (headerTitle) headerTitle.innerText = `Editando Curso ${course.id}`;
-
-            document.getElementById('editingCourseOriginalId').value = course.id;
-            document.getElementById('courseRoleCategory').value = course.roleCategory || 'DOC';
-            
-            const codeParts = (course.id || '').split('_');
-            document.getElementById('courseCodeNum').value = codeParts[codeParts.length - 1] || '01';
-
-            document.getElementById('courseTitleInput').value = course.title || '';
-            document.getElementById('courseImageUrlInput').value = course.imageUrl || '';
-            window.previewCourseImage(course.imageUrl || '');
-
-            document.getElementById('courseDescInput').value = course.description || '';
-            document.getElementById('courseStartDate').value = course.startDate || '';
-            document.getElementById('courseEndDate').value = course.endDate || '';
-            document.getElementById('courseStartTime').value = course.startTime || '08:00';
-            document.getElementById('courseEndTime').value = course.endTime || '20:00';
-
-            window.currentCourseModules = JSON.parse(JSON.stringify(course.modules || []));
-            window.renderCreatedModulesSummary();
-        };
-
-        // USER MANAGEMENT FUNCTIONS
-        window.renderUsersMasterTable = function() {
-            const tbody = document.getElementById('usersMasterTableBody');
-            const totalBadge = document.getElementById('totalUsersBadge');
-            if (totalBadge) totalBadge.innerText = `${window.registeredUsers.length} Registrados`;
-            if (!tbody) return;
-
-            if (window.registeredUsers.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-400 italic">No hay alumnos ni participantes registrados en la plataforma.</td></tr>`;
-                return;
-            }
-
-            tbody.innerHTML = window.registeredUsers.map((user, idx) => {
-                const score = user.score !== undefined ? user.score : (user.progress || 0);
-                const isApproved = score >= 80;
-
-                return `
-                <tr class="border-b border-slate-100 hover:bg-slate-50">
-                    <td class="p-3 font-bold text-slate-800">${user.academicTitle ? user.academicTitle + ' ' : ''}${user.fullName}</td>
-                    <td class="p-3 text-slate-600">${user.email}</td>
-                    <td class="p-3"><span class="px-2 py-0.5 bg-slate-100 text-slate-800 font-bold rounded text-[10px]">${user.roleCategory || 'ALUMNO'}</span></td>
-                    <td class="p-3 font-mono text-slate-700">
-                        <div class="flex items-center gap-1">
-                            <input type="text" value="${user.password || '123456'}" id="userPassInput_${idx}" class="w-24 p-1 text-xs border border-slate-300 rounded font-mono">
-                            <button onclick="window.updateUserPassword('${user.id}', ${idx})" class="p-1 text-emerald-600 hover:text-emerald-800" title="Guardar Contraseña">
-                                <i class="fa-solid fa-floppy-disk"></i>
-                            </button>
-                        </div>
-                    </td>
-                    <td class="p-3 font-mono font-bold text-ceut-navy">${user.folio || 'CEUT_DOC_01_001'}</td>
-                    <td class="p-3">
-                        <div class="flex flex-col gap-1">
-                            <span class="px-2 py-0.5 rounded font-bold text-xs inline-block w-fit ${isApproved ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">
-                                ${score}% ${isApproved ? '(Aprobado ≥ 80%)' : '(En proceso)'}
-                            </span>
-                            ${isApproved ? `
-                                <button onclick="window.viewUserCertificate('${user.id}')" class="mt-1 px-2.5 py-1 bg-ceut-navy hover:bg-ceut-purple text-ceut-gold font-bold rounded text-[10px] flex items-center gap-1 shadow-sm w-fit">
-                                    <i class="fa-solid fa-certificate"></i> Ver Constancia
-                                </button>
-                            ` : '<span class="text-[10px] text-slate-400 italic">Mínimo 80% para constancia</span>'}
-                        </div>
-                    </td>
-                    <td class="p-3 text-center">
-                        <button onclick="window.deleteUserRecord('${user.id}')" class="px-2.5 py-1 bg-red-100 text-red-700 hover:bg-red-200 rounded font-bold text-[11px] transition-colors">
-                            <i class="fa-solid fa-trash-can mr-1"></i> Eliminar
-                        </button>
-                    </td>
-                </tr>
-            `;
-            }).join('');
-        };
-
-        // RENDER CATALOG COURSES BY CATEGORY
         window.renderCatalog = function() {
             const grid = document.getElementById('courseGrid');
             if (!grid) return;
@@ -1695,216 +1240,67 @@
             `).join('');
         };
 
-        // MEDIA & HELPER FUNCTIONS
-        window.previewCourseImage = function(url) {
-            const previewBox = document.getElementById('courseImagePreviewBox');
-            if (!previewBox) return;
-            if (url) {
-                previewBox.innerHTML = `<img src="${url}" class="w-full h-full object-cover" onerror="this.onerror=null; this.src='https://placehold.co/600x400/1B1446/F5B000?text=Imagen+No+Valida';">`;
+        // ADMIN ACCESS CONTROLS
+        window.openAdminPortal = function() {
+            if (window.isAdminLoggedIn) {
+                window.showAdminView();
             } else {
-                previewBox.innerHTML = `<span class="text-xs text-slate-400 font-medium">Vista previa de la portada seleccionada</span>`;
+                const modal = document.getElementById('adminAuthModal');
+                if (modal) modal.classList.remove('hidden');
             }
         };
 
-        window.handleCourseImageUpload = function(event) {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const urlInput = document.getElementById('courseImageUrlInput');
-                    if (urlInput) urlInput.value = e.target.result;
-                    window.previewCourseImage(e.target.result);
-                };
-                reader.readAsDataURL(file);
-            }
+        window.closeAdminAuthModal = function() {
+            const modal = document.getElementById('adminAuthModal');
+            if (modal) modal.classList.add('hidden');
         };
 
-        window.switchResourceInputMode = function(mode) {
-            window.activeResourceInputMode = mode;
-            const fileBox = document.getElementById('resInputFileBox');
-            const urlBox = document.getElementById('resInputUrlBox');
-            const btnFile = document.getElementById('resModeBtnFile');
-            const btnUrl = document.getElementById('resModeBtnUrl');
-
-            if (mode === 'file') {
-                if (fileBox) fileBox.classList.remove('hidden');
-                if (urlBox) urlBox.classList.add('hidden');
-                if (btnFile) btnFile.className = "text-ceut-navy border-b-2 border-ceut-gold pb-1 flex items-center gap-1";
-                if (btnUrl) btnUrl.className = "text-slate-400 hover:text-slate-600 pb-1 flex items-center gap-1";
+        window.verifyAdminPass = function(event) {
+            if (event) event.preventDefault();
+            const input = document.getElementById('adminPassInput');
+            const err = document.getElementById('adminAuthErr');
+            if (input && input.value === 'jcas1015') {
+                window.isAdminLoggedIn = true;
+                if (err) err.classList.add('hidden');
+                window.closeAdminAuthModal();
+                window.showAdminView();
             } else {
-                if (fileBox) fileBox.classList.add('hidden');
-                if (urlBox) urlBox.classList.remove('hidden');
-                if (btnUrl) btnUrl.className = "text-ceut-navy border-b-2 border-ceut-gold pb-1 flex items-center gap-1";
-                if (btnFile) btnFile.className = "text-slate-400 hover:text-slate-600 pb-1 flex items-center gap-1";
+                if (err) err.classList.remove('hidden');
             }
         };
 
-        window.handleMaterialFileUpload = function(event) {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const urlInput = document.getElementById('moduleMaterialUrlInput');
-                    if (urlInput) urlInput.value = e.target.result;
-                };
-                reader.readAsDataURL(file);
-            }
+        window.showAdminView = function() {
+            const secCat = document.getElementById('section-catalog');
+            const secPlay = document.getElementById('section-player');
+            const secAdm = document.getElementById('section-admin');
+
+            if (secCat) secCat.classList.add('hidden');
+            if (secPlay) secPlay.classList.add('hidden');
+            if (secAdm) secAdm.classList.remove('hidden');
+
+            window.switchAdminSubTab('users');
         };
 
-        window.removeModuleFromBuilder = function(index) {
-            window.currentCourseModules.splice(index, 1);
-            window.renderCreatedModulesSummary();
+        window.switchAdminSubTab = function(subTab) {
+            ['users', 'courses', 'certDesign'].forEach(v => {
+                const viewEl = document.getElementById(`adminSubView-${v}`);
+                const btnEl = document.getElementById(`adminSubBtn-${v}`);
+                if (viewEl) viewEl.classList.toggle('hidden', v !== subTab);
+                if (btnEl) {
+                    if (v === subTab) {
+                        btnEl.className = "pb-3 font-bold text-sm text-ceut-navy border-b-2 border-ceut-gold flex items-center gap-2";
+                    } else {
+                        btnEl.className = "pb-3 font-medium text-sm text-slate-500 hover:text-ceut-navy flex items-center gap-2";
+                    }
+                }
+            });
+
+            if (subTab === 'users') window.renderUsersMasterTable();
+            if (subTab === 'courses') window.renderAdminCoursesGrid();
+            if (subTab === 'certDesign') window.updateCertificatePreview();
         };
 
-        // QUESTION BUILDER LOGIC
-        window.toggleQuestionTypeInputs = function() {
-            const type = document.getElementById('questionTypeSelect').value;
-            const mult = document.getElementById('qInputsMultiple');
-            const bool = document.getElementById('qInputsBoolean');
-            const reord = document.getElementById('qInputsReorder');
-
-            if (mult) mult.classList.toggle('hidden', type !== 'multiple');
-            if (bool) bool.classList.toggle('hidden', type !== 'boolean');
-            if (reord) reord.classList.toggle('hidden', type !== 'reorder');
-        };
-
-        window.addOrUpdateQuestionItem = function() {
-            const type = document.getElementById('questionTypeSelect').value;
-            const questionText = document.getElementById('moduleQuestionInput').value.trim();
-            const feedback = document.getElementById('moduleFeedbackInput').value.trim();
-
-            if (!questionText) {
-                alert("Ingresa la instrucción o pregunta.");
-                return;
-            }
-
-            let qObj = { type, questionText, feedback };
-
-            if (type === 'multiple') {
-                const options = [
-                    document.getElementById('opt0').value.trim(),
-                    document.getElementById('opt1').value.trim(),
-                    document.getElementById('opt2').value.trim(),
-                    document.getElementById('opt3').value.trim()
-                ];
-                const correctIndex = parseInt(document.getElementById('multipleCorrectSelect').value, 10);
-                qObj.options = options;
-                qObj.correctIndex = correctIndex;
-            } else if (type === 'boolean') {
-                qObj.correctValue = document.getElementById('boolCorrectVal').value === 'true';
-            } else if (type === 'reorder') {
-                qObj.steps = [
-                    document.getElementById('reorderStep1').value.trim(),
-                    document.getElementById('reorderStep2').value.trim(),
-                    document.getElementById('reorderStep3').value.trim(),
-                    document.getElementById('reorderStep4').value.trim()
-                ];
-            }
-
-            if (window.editingQuestionIndex >= 0) {
-                window.currentEditingQuestions[window.editingQuestionIndex] = qObj;
-            } else {
-                window.currentEditingQuestions.push(qObj);
-            }
-
-            window.resetQuestionForm();
-            window.renderAddedQuestionsList();
-        };
-
-        window.renderAddedQuestionsList = function() {
-            const list = document.getElementById('addedQuestionsList');
-            const badge = document.getElementById('quizItemCountBadge');
-            if (badge) badge.innerText = `${window.currentEditingQuestions.length} Pregunta(s)`;
-            if (!list) return;
-
-            if (window.currentEditingQuestions.length === 0) {
-                list.innerHTML = `<p id="noQuestionsNotice" class="text-xs text-slate-400 italic bg-slate-50 p-3 rounded-lg text-center border border-dashed border-slate-200">No has agregado preguntas a este módulo.</p>`;
-                return;
-            }
-
-            list.innerHTML = window.currentEditingQuestions.map((q, idx) => `
-                <div class="bg-white p-3 rounded-lg border border-slate-200 flex items-center justify-between text-xs">
-                    <div>
-                        <span class="font-bold text-ceut-navy">${idx + 1}. ${q.questionText}</span>
-                        <span class="ml-2 px-2 py-0.5 bg-amber-100 text-amber-900 rounded font-mono text-[10px] uppercase">${q.type}</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <button type="button" onclick="window.editQuestionItem(${idx})" class="text-amber-700 hover:text-amber-900 font-bold"><i class="fa-solid fa-pen"></i></button>
-                        <button type="button" onclick="window.removeQuestionItem(${idx})" class="text-red-600 hover:text-red-800 font-bold"><i class="fa-solid fa-trash-can"></i></button>
-                    </div>
-                </div>
-            `).join('');
-        };
-
-        window.editQuestionItem = function(index) {
-            const q = window.currentEditingQuestions[index];
-            if (!q) return;
-
-            window.editingQuestionIndex = index;
-            document.getElementById('questionTypeSelect').value = q.type;
-            window.toggleQuestionTypeInputs();
-
-            document.getElementById('moduleQuestionInput').value = q.questionText || '';
-            document.getElementById('moduleFeedbackInput').value = q.feedback || '';
-
-            if (q.type === 'multiple' && q.options) {
-                document.getElementById('opt0').value = q.options[0] || '';
-                document.getElementById('opt1').value = q.options[1] || '';
-                document.getElementById('opt2').value = q.options[2] || '';
-                document.getElementById('opt3').value = q.options[3] || '';
-                document.getElementById('multipleCorrectSelect').value = q.correctIndex || 0;
-            } else if (q.type === 'boolean') {
-                document.getElementById('boolCorrectVal').value = q.correctValue ? 'true' : 'false';
-            } else if (q.type === 'reorder' && q.steps) {
-                document.getElementById('reorderStep1').value = q.steps[0] || '';
-                document.getElementById('reorderStep2').value = q.steps[1] || '';
-                document.getElementById('reorderStep3').value = q.steps[2] || '';
-                document.getElementById('reorderStep4').value = q.steps[3] || '';
-            }
-
-            const btnText = document.getElementById('btnAddQuestionText');
-            if (btnText) btnText.innerText = "Guardar Cambios de Pregunta";
-            const btnCancel = document.getElementById('btnCancelEditQuestion');
-            if (btnCancel) btnCancel.classList.remove('hidden');
-        };
-
-        window.removeQuestionItem = function(index) {
-            window.currentEditingQuestions.splice(index, 1);
-            window.renderAddedQuestionsList();
-        };
-
-        window.cancelQuestionEdit = function() {
-            window.resetQuestionForm();
-        };
-
-        window.resetQuestionForm = function() {
-            window.editingQuestionIndex = -1;
-            document.getElementById('moduleQuestionInput').value = '';
-            document.getElementById('moduleFeedbackInput').value = '';
-            document.getElementById('opt0').value = '';
-            document.getElementById('opt1').value = '';
-            document.getElementById('opt2').value = '';
-            document.getElementById('opt3').value = '';
-            document.getElementById('reorderStep1').value = '';
-            document.getElementById('reorderStep2').value = '';
-            document.getElementById('reorderStep3').value = '';
-            document.getElementById('reorderStep4').value = '';
-
-            const btnText = document.getElementById('btnAddQuestionText');
-            if (btnText) btnText.innerText = "+ Agregar Pregunta al Módulo";
-            const btnCancel = document.getElementById('btnCancelEditQuestion');
-            if (btnCancel) btnCancel.classList.add('hidden');
-        };
-
-        window.deleteCourseRecord = function(courseId) {
-            if (confirm(`¿Estás seguro de eliminar el curso ${courseId}?`)) {
-                window.coursesData = window.coursesData.filter(c => c.id !== courseId);
-                window.renderAdminCoursesGrid();
-                if (window.renderCatalog) window.renderCatalog();
-            }
-        };
-
-        // STUDENT & PLAYER FUNCTIONS
+        // STUDENT LOGIN & ENROLLMENT MODAL HANDLERS
         window.switchModalTab = function(tabName) {
             const loginForm = document.getElementById('existingLoginForm');
             const regForm = document.getElementById('enrollmentForm');
@@ -1928,21 +1324,28 @@
         };
 
         window.openRegistrationModal = function(courseId) {
-            const course = window.coursesData.find(c => c.id === courseId);
-            if (!course) return;
+            let course = window.coursesData.find(c => c.id === courseId);
+            if (!course && window.coursesData.length > 0) {
+                course = window.coursesData[0];
+            }
 
             window.activeSelectedCourseForEnrollment = course;
             
             const titleSpans = document.querySelectorAll('.loginCourseTitleSpan');
             const folioSpans = document.querySelectorAll('.loginCourseFolioSpan');
 
-            titleSpans.forEach(el => el.innerText = course.title);
-            folioSpans.forEach(el => el.innerText = course.id);
+            titleSpans.forEach(el => el.innerText = course ? course.title : '--');
+            folioSpans.forEach(el => el.innerText = course ? course.id : '--');
 
             window.switchModalTab('login');
 
             const modal = document.getElementById('registrationModal');
             if (modal) modal.classList.remove('hidden');
+        };
+
+        window.closeRegistrationModal = function() {
+            const modal = document.getElementById('registrationModal');
+            if (modal) modal.classList.add('hidden');
         };
 
         window.handleExistingUserLogin = function(event) {
@@ -1965,19 +1368,16 @@
                 return;
             }
 
-            // Obtener el curso activo seleccionado o tomar el primero disponible
             let course = window.activeSelectedCourseForEnrollment;
             if (!course && window.coursesData.length > 0) {
                 course = window.coursesData.find(c => c.roleCategory === window.currentTab) || window.coursesData[0];
                 window.activeSelectedCourseForEnrollment = course;
             }
 
-            // Buscar coincidencia en la base de datos de usuarios
             let user = window.registeredUsers.find(u => 
                 (u.email || '').toLowerCase() === email && (u.password || '') === password
             );
 
-            // Búsqueda por correo si la contraseña no está restringida
             if (!user) {
                 user = window.registeredUsers.find(u => (u.email || '').toLowerCase() === email);
                 if (user && user.password && user.password !== password) {
@@ -1989,7 +1389,6 @@
                 }
             }
 
-            // Crear sesión activa instantánea si el correo es válido para evitar trabar la vista
             if (!user) {
                 user = {
                     id: 'usr_' + Date.now(),
@@ -2011,11 +1410,8 @@
             if (err) err.classList.add('hidden');
 
             window.currentUserRecord = user;
-
-            // Cerrar modal de inicio de sesión
             window.closeRegistrationModal();
 
-            // Configurar datos del curso en el reproductor
             if (course) {
                 window.currentCourse = course;
                 window.currentCourseScores = {};
@@ -2033,7 +1429,6 @@
                 if (progressEl) progressEl.innerText = `${user.score || user.progress || 0}%`;
             }
 
-            // Alternar vista del catálogo al reproductor inmediatamente
             const secCat = document.getElementById('section-catalog');
             const secPlay = document.getElementById('section-player');
             const secAdm = document.getElementById('section-admin');
@@ -2049,5 +1444,10 @@
             }
         };
 
-        window.closeRegistrationModal = function() {
-<!-- ... existing code -->
+        // INICIALIZADOR AL CARGAR LA PÁGINA
+        window.onload = function() {
+            window.selectCategoryTab('DOC');
+        };
+    </script>
+</body>
+</html>

@@ -1111,28 +1111,28 @@
                 return formatted;
             }
             
-            // 2. YouTube Links Parser (Handles channel tags, timestamps, watch?v=, short URLs)
+            // 2. YouTube Links Parser (Handles channel tags, timestamps, watch?v=, short URLs, embeds)
             if (formatted.includes('youtube.com/watch') || formatted.includes('m.youtube.com/watch')) {
                 try {
                     const match = formatted.match(/(?:v=|\/embed\/|\/shorts\/)([a-zA-Z0-9_-]{11})/);
                     if (match && match[1]) {
-                        return `https://www.youtube-nocookie.com/embed/${match[1]}?rel=0&enablejsapi=1`;
+                        return `https://www.youtube-nocookie.com/embed/${match[1]}?autoplay=0&rel=0&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`;
                     }
                 } catch(e){}
             } else if (formatted.includes('youtu.be/')) {
                 const match = formatted.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
                 if (match && match[1]) {
-                    return `https://www.youtube-nocookie.com/embed/${match[1]}?rel=0&enablejsapi=1`;
+                    return `https://www.youtube-nocookie.com/embed/${match[1]}?autoplay=0&rel=0&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`;
                 }
             } else if (formatted.includes('youtube.com/embed/')) {
                 const match = formatted.match(/\/embed\/([a-zA-Z0-9_-]{11})/);
                 if (match && match[1]) {
-                    return `https://www.youtube-nocookie.com/embed/${match[1]}?rel=0&enablejsapi=1`;
+                    return `https://www.youtube-nocookie.com/embed/${match[1]}?autoplay=0&rel=0&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`;
                 }
             } else if (formatted.includes('youtube.com/shorts/')) {
                 const match = formatted.match(/\/shorts\/([a-zA-Z0-9_-]{11})/);
                 if (match && match[1]) {
-                    return `https://www.youtube-nocookie.com/embed/${match[1]}?rel=0`;
+                    return `https://www.youtube-nocookie.com/embed/${match[1]}?autoplay=0&rel=0`;
                 }
             }
 
@@ -1159,7 +1159,7 @@
 
             // 4. Remote PDF or Documents via Google Docs Viewer
             const lower = formatted.toLowerCase();
-            if (lower.endsWith('.pdf') || lower.includes('.pdf?') || lower.includes('.doc') || lower.includes('.ppt')) {
+            if (lower.endsWith('.pdf') || lower.includes('.pdf?') || lower.includes('.doc') || lower.includes('.ppt') || lower.includes('.pptx')) {
                 return `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(formatted)}`;
             }
 
@@ -1188,6 +1188,7 @@
             if (videoRawUrl && videoRawUrl.trim() !== '') {
                 const embedSrc = window.formatEmbedUrl(videoRawUrl);
                 if (iframe) {
+                    iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share');
                     iframe.src = embedSrc;
                     iframe.classList.remove('hidden');
                 }
@@ -1218,21 +1219,21 @@
                     const isDoc = lowerUrl.includes('.doc') || lowerUrl.includes('.docx') || lowerUrl.includes('document');
 
                     materialsContent.innerHTML = `
-                        <div class="flex items-center gap-2">
-                            <span class="w-8 h-8 rounded-lg bg-amber-100 text-amber-900 font-bold flex items-center justify-center text-sm shadow-sm">
+                        <div class="flex items-center gap-3 w-full sm:w-auto">
+                            <span class="w-10 h-10 rounded-xl bg-amber-100 text-amber-900 font-bold flex items-center justify-center text-base shadow-sm shrink-0">
                                 <i class="fa-solid ${isPdf ? 'fa-file-pdf text-red-600' : isSlide ? 'fa-file-powerpoint text-amber-600' : isDoc ? 'fa-file-word text-blue-600' : 'fa-link text-ceut-navy'}"></i>
                             </span>
                             <div class="overflow-hidden">
-                                <h5 class="font-bold text-ceut-navy text-xs">${isPdf ? 'Documento PDF Oficial' : isSlide ? 'Presentación de Diapositivas' : isDoc ? 'Documento de Lectura' : 'Recurso Complementario'}</h5>
-                                <p class="text-[10px] text-slate-500 truncate max-w-xs">${resUrl.startsWith('data:') ? 'Archivo adjunto en la plataforma' : resUrl}</p>
+                                <h5 class="font-bold text-ceut-navy text-xs sm:text-sm">${isPdf ? 'Documento PDF Oficial' : isSlide ? 'Presentación de Diapositivas' : isDoc ? 'Documento de Lectura' : 'Recurso Complementario'}</h5>
+                                <p class="text-[10px] sm:text-xs text-slate-500 truncate max-w-xs sm:max-w-md">${resUrl.startsWith('data:') ? 'Archivo adjunto guardado en plataforma' : resUrl}</p>
                             </div>
                         </div>
-                        <div class="flex items-center gap-2">
-                            <button type="button" onclick="window.previewMaterialInline('${resUrl.replace(/'/g, "\\'")}')" class="px-3 py-1.5 bg-ceut-navy hover:bg-ceut-purple text-white font-bold text-[11px] rounded-lg shadow transition-colors flex items-center gap-1">
+                        <div class="flex items-center gap-2 mt-2 sm:mt-0 w-full sm:w-auto justify-end">
+                            <button type="button" onclick="window.previewMaterialInline('${resUrl.replace(/'/g, "\\'")}')" class="px-3.5 py-2 bg-ceut-navy hover:bg-ceut-purple text-white font-bold text-xs rounded-xl shadow transition-all flex items-center gap-1.5">
                                 <i class="fa-solid fa-eye text-ceut-gold"></i> Previsualizar Lectura
                             </button>
                             ${!resUrl.startsWith('data:') ? `
-                            <a href="${resUrl}" target="_blank" rel="noopener noreferrer" class="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-[11px] rounded-lg transition-colors flex items-center gap-1">
+                            <a href="${resUrl}" target="_blank" rel="noopener noreferrer" class="px-3.5 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5">
                                 <i class="fa-solid fa-arrow-up-right-from-square"></i> Abrir en Pestaña
                             </a>` : ''}
                         </div>

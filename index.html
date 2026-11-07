@@ -1242,6 +1242,79 @@
             if (subTab === 'certDesign') window.updateCertificatePreview();
         };
 
+        // RENDER ADMIN COURSES GRID WITH EDIT & DELETE CONTROLS
+        window.renderAdminCoursesGrid = function() {
+            const grid = document.getElementById('adminCoursesManageGrid');
+            if (!grid) return;
+
+            if (window.coursesData.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-1 md:col-span-2 bg-white p-6 rounded-xl border border-slate-200 text-center text-slate-400 italic">
+                        No hay cursos registrados para administrar. Presiona "Diseñar Nuevo Curso" para agregar uno.
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = window.coursesData.map(course => `
+                <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between space-y-4">
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-start gap-2">
+                            <span class="px-2.5 py-1 bg-ceut-navy text-ceut-gold font-mono font-bold text-xs rounded-lg">${course.id}</span>
+                            <span class="px-2.5 py-1 bg-amber-100 text-amber-900 font-bold text-[10px] rounded-lg">Categoría: ${course.roleCategory || 'DOC'}</span>
+                        </div>
+                        <h4 class="font-bold text-ceut-navy text-sm">${course.title}</h4>
+                        <p class="text-xs text-slate-500 line-clamp-2">${course.description}</p>
+                        <div class="text-[11px] text-slate-400 font-medium">
+                            ${(course.modules || []).length} Módulo(s) configurado(s)
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 pt-3 border-t border-slate-100">
+                        <button onclick="window.editCourseRecord('${course.id}')" class="flex-1 py-2 bg-ceut-navy hover:bg-ceut-purple text-white font-bold text-xs rounded-lg flex items-center justify-center gap-1.5 transition-colors">
+                            <i class="fa-solid fa-pen-to-square text-ceut-gold"></i> Editar Curso
+                        </button>
+                        <button onclick="window.deleteCourseRecord('${course.id}')" class="py-2 px-3 bg-red-100 hover:bg-red-200 text-red-700 font-bold text-xs rounded-lg flex items-center justify-center gap-1.5 transition-colors">
+                            <i class="fa-solid fa-trash-can"></i> Eliminar
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        };
+
+        // EDIT COURSE RECORD FUNCTION
+        window.editCourseRecord = function(courseId) {
+            const course = window.coursesData.find(c => c.id === courseId);
+            if (!course) return;
+
+            window.switchAdminSubTab('courses');
+            const formContainer = document.getElementById('newCourseFormContainer');
+            if (formContainer && formContainer.classList.contains('hidden')) {
+                formContainer.classList.remove('hidden');
+            }
+
+            const headerTitle = document.getElementById('courseFormModeHeaderTitle');
+            if (headerTitle) headerTitle.innerText = `Editando Curso ${course.id}`;
+
+            document.getElementById('editingCourseOriginalId').value = course.id;
+            document.getElementById('courseRoleCategory').value = course.roleCategory || 'DOC';
+            
+            const codeParts = (course.id || '').split('_');
+            document.getElementById('courseCodeNum').value = codeParts[codeParts.length - 1] || '01';
+
+            document.getElementById('courseTitleInput').value = course.title || '';
+            document.getElementById('courseImageUrlInput').value = course.imageUrl || '';
+            window.previewCourseImage(course.imageUrl || '');
+
+            document.getElementById('courseDescInput').value = course.description || '';
+            document.getElementById('courseStartDate').value = course.startDate || '';
+            document.getElementById('courseEndDate').value = course.endDate || '';
+            document.getElementById('courseStartTime').value = course.startTime || '08:00';
+            document.getElementById('courseEndTime').value = course.endTime || '20:00';
+
+            window.currentCourseModules = JSON.parse(JSON.stringify(course.modules || []));
+            window.renderCreatedModulesSummary();
+        };
+
         // USER MANAGEMENT FUNCTIONS
         window.renderUsersMasterTable = function() {
             const tbody = document.getElementById('usersMasterTableBody');

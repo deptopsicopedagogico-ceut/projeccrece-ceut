@@ -1101,35 +1101,42 @@
         window.registeredUsers = window.registeredUsers || [];
         window.currentTab = window.currentTab || 'DOC';
 
-        // FORMAT EMBED YOUTUBE, DRIVE & DOCUMENT URL HELPER
+        // FORMAT EMBED YOUTUBE, DRIVE & DOCUMENT URL HELPER (EXTENDED & SAFE)
         window.formatEmbedUrl = function(url) {
             if (!url) return '';
             let formatted = url.trim();
+
+            // 1. Clean data/blob URIs
+            if (formatted.startsWith('data:') || formatted.startsWith('blob:')) {
+                return formatted;
+            }
             
-            // YouTube Links Parser
-            if (formatted.includes('youtube.com/watch')) {
+            // 2. YouTube Links Parser (Handles channel tags, timestamps, watch?v=, short URLs)
+            if (formatted.includes('youtube.com/watch') || formatted.includes('m.youtube.com/watch')) {
                 try {
-                    const urlObj = new URL(formatted);
-                    const videoId = urlObj.searchParams.get('v');
-                    if (videoId) return `https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0&enablejsapi=1`;
+                    const match = formatted.match(/(?:v=|\/embed\/|\/shorts\/)([a-zA-Z0-9_-]{11})/);
+                    if (match && match[1]) {
+                        return `https://www.youtube-nocookie.com/embed/${match[1]}?rel=0&enablejsapi=1`;
+                    }
                 } catch(e){}
             } else if (formatted.includes('youtu.be/')) {
-                const parts = formatted.split('youtu.be/');
-                if (parts[1]) {
-                    const videoId = parts[1].split('?')[0].split('&')[0];
-                    return `https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0&enablejsapi=1`;
+                const match = formatted.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
+                if (match && match[1]) {
+                    return `https://www.youtube-nocookie.com/embed/${match[1]}?rel=0&enablejsapi=1`;
                 }
             } else if (formatted.includes('youtube.com/embed/')) {
-                return formatted;
+                const match = formatted.match(/\/embed\/([a-zA-Z0-9_-]{11})/);
+                if (match && match[1]) {
+                    return `https://www.youtube-nocookie.com/embed/${match[1]}?rel=0&enablejsapi=1`;
+                }
             } else if (formatted.includes('youtube.com/shorts/')) {
-                const parts = formatted.split('youtube.com/shorts/');
-                if (parts[1]) {
-                    const videoId = parts[1].split('?')[0];
-                    return `https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0`;
+                const match = formatted.match(/\/shorts\/([a-zA-Z0-9_-]{11})/);
+                if (match && match[1]) {
+                    return `https://www.youtube-nocookie.com/embed/${match[1]}?rel=0`;
                 }
             }
 
-            // Google Drive & Google Docs / Slides Parser
+            // 3. Google Drive & Google Docs / Slides Parser
             if (formatted.includes('drive.google.com/file/d/')) {
                 const parts = formatted.split('/d/');
                 if (parts[1]) {
@@ -1148,6 +1155,12 @@
                     const fileId = parts[1].split('/')[0];
                     return `https://docs.google.com/document/d/${fileId}/pub?embedded=true`;
                 }
+            }
+
+            // 4. Remote PDF or Documents via Google Docs Viewer
+            const lower = formatted.toLowerCase();
+            if (lower.endsWith('.pdf') || lower.includes('.pdf?') || lower.includes('.doc') || lower.includes('.ppt')) {
+                return `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(formatted)}`;
             }
 
             return formatted;
@@ -1200,7 +1213,7 @@
                 const resUrl = currentMod.materialUrl || currentMod.resourceUrl || currentMod.materialFile || '';
                 if (resUrl && resUrl.trim() !== '') {
                     const lowerUrl = resUrl.toLowerCase();
-                    const isPdf = lowerUrl.includes('.pdf');
+                    const isPdf = lowerUrl.includes('.pdf') || resUrl.startsWith('data:application/pdf');
                     const isSlide = lowerUrl.includes('.ppt') || lowerUrl.includes('.pptx') || lowerUrl.includes('presentation');
                     const isDoc = lowerUrl.includes('.doc') || lowerUrl.includes('.docx') || lowerUrl.includes('document');
 
@@ -1209,18 +1222,19 @@
                             <span class="w-8 h-8 rounded-lg bg-amber-100 text-amber-900 font-bold flex items-center justify-center text-sm shadow-sm">
                                 <i class="fa-solid ${isPdf ? 'fa-file-pdf text-red-600' : isSlide ? 'fa-file-powerpoint text-amber-600' : isDoc ? 'fa-file-word text-blue-600' : 'fa-link text-ceut-navy'}"></i>
                             </span>
-                            <div>
+                            <div class="overflow-hidden">
                                 <h5 class="font-bold text-ceut-navy text-xs">${isPdf ? 'Documento PDF Oficial' : isSlide ? 'Presentación de Diapositivas' : isDoc ? 'Documento de Lectura' : 'Recurso Complementario'}</h5>
-                                <p class="text-[10px] text-slate-500 truncate max-w-xs">${resUrl}</p>
+                                <p class="text-[10px] text-slate-500 truncate max-w-xs">${resUrl.startsWith('data:') ? 'Archivo adjunto en la plataforma' : resUrl}</p>
                             </div>
                         </div>
                         <div class="flex items-center gap-2">
                             <button type="button" onclick="window.previewMaterialInline('${resUrl.replace(/'/g, "\\'")}')" class="px-3 py-1.5 bg-ceut-navy hover:bg-ceut-purple text-white font-bold text-[11px] rounded-lg shadow transition-colors flex items-center gap-1">
                                 <i class="fa-solid fa-eye text-ceut-gold"></i> Previsualizar Lectura
                             </button>
+                            ${!resUrl.startsWith('data:') ? `
                             <a href="${resUrl}" target="_blank" rel="noopener noreferrer" class="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-[11px] rounded-lg transition-colors flex items-center gap-1">
                                 <i class="fa-solid fa-arrow-up-right-from-square"></i> Abrir en Pestaña
-                            </a>
+                            </a>` : ''}
                         </div>
                     `;
                 } else {
@@ -1258,18 +1272,7 @@
             const inlineIframe = document.getElementById('materialInlineIframe');
             if (!previewContainer || !inlineIframe) return;
 
-            let formattedUrl = url;
-            const lowerUrl = url.toLowerCase();
-
-            if (lowerUrl.includes('drive.google.com') || lowerUrl.includes('docs.google.com')) {
-                formattedUrl = window.formatEmbedUrl(url);
-            } else if (lowerUrl.startsWith('data:application/pdf') || lowerUrl.startsWith('blob:')) {
-                formattedUrl = url;
-            } else if (lowerUrl.endsWith('.pdf')) {
-                formattedUrl = `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`;
-            } else {
-                formattedUrl = `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`;
-            }
+            let formattedUrl = window.formatEmbedUrl(url);
 
             inlineIframe.src = formattedUrl;
             previewContainer.classList.remove('hidden');
@@ -1283,303 +1286,4 @@
         };
 
         // NAVIGATION TABS SWITCHER
-        window.selectCategoryTab = function(categoryCode) {
-            window.currentTab = categoryCode;
-
-            ['DOC', 'AUL', 'ADM'].forEach(cat => {
-                const btn = document.getElementById(`nav-btn-${cat}`);
-                if (btn) {
-                    if (cat === categoryCode) {
-                        btn.className = "main-nav-btn flex-1 min-w-[140px] py-3 px-4 rounded-lg font-bold text-sm flex items-center justify-center space-x-2 bg-ceut-navy text-white transition-all shadow-sm hover:-translate-y-0.5";
-                    } else {
-                        btn.className = "main-nav-btn flex-1 min-w-[140px] py-3 px-4 rounded-lg font-medium text-sm flex items-center justify-center space-x-2 text-slate-600 hover:bg-slate-100 transition-all hover:-translate-y-0.5";
-                    }
-                }
-            });
-
-            const titleHeader = document.getElementById('catalogTitleHeader');
-            const subHeader = document.getElementById('catalogSubHeader');
-            const badge = document.getElementById('activeCategoryBadge');
-
-            const categoryNames = {
-                'DOC': { title: 'Catálogo de Cursos para Docentes', desc: 'Cursos oficiales programados para el personal docente CEUT.', label: 'DOCENTES (DOC)' },
-                'AUL': { title: 'Catálogo de Cursos para Alumnos', desc: 'Capacitaciones y talleres para la comunidad estudiantil CEUT.', label: 'ALUMNOS (AUL)' },
-                'ADM': { title: 'Catálogo de Cursos para Administrativos', desc: 'Programas de capacitación y desarrollo institucional administrativo.', label: 'ADMINISTRATIVOS (ADM)' }
-            };
-
-            if (categoryNames[categoryCode]) {
-                if (titleHeader) titleHeader.innerText = categoryNames[categoryCode].title;
-                if (subHeader) subHeader.innerText = categoryNames[categoryCode].desc;
-                if (badge) badge.innerText = `CATEGORÍA: ${categoryNames[categoryCode].label}`;
-            }
-
-            const secCat = document.getElementById('section-catalog');
-            const secPlay = document.getElementById('section-player');
-            const secAdm = document.getElementById('section-admin');
-
-            if (secCat) secCat.classList.remove('hidden');
-            if (secPlay) secPlay.classList.add('hidden');
-            if (secAdm) secAdm.classList.add('hidden');
-
-            window.renderCatalog();
-        };
-
-        window.renderCatalog = function() {
-            const grid = document.getElementById('courseGrid');
-            if (!grid) return;
-
-            const safeCourses = Array.isArray(window.coursesData) ? window.coursesData : [];
-            const filteredCourses = safeCourses.filter(c => c && c.roleCategory === window.currentTab);
-
-            if (filteredCourses.length === 0) {
-                grid.innerHTML = `
-                    <div class="col-span-1 md:col-span-2 lg:col-span-3 bg-white p-8 rounded-2xl border border-slate-200 text-center space-y-3 shadow-sm">
-                        <div class="w-16 h-16 bg-amber-50 text-ceut-navy rounded-full flex items-center justify-center mx-auto text-2xl border border-amber-200">
-                            <i class="fa-solid fa-folder-open text-ceut-gold"></i>
-                        </div>
-                        <h3 class="font-bold text-ceut-navy text-base">No hay cursos disponibles en esta categoría</h3>
-                        <p class="text-xs text-slate-500 max-w-md mx-auto">Actualmente no existen programas publicados para este perfil. Puedes agregar uno nuevo desde el Portal Administrativo.</p>
-                    </div>
-                `;
-                return;
-            }
-
-            grid.innerHTML = filteredCourses.map(course => `
-                <div class="bg-white rounded-2xl shadow-sm hover:shadow-xl border border-slate-200 overflow-hidden flex flex-col justify-between transition-all duration-300 hover:-translate-y-1">
-                    <div>
-                        <div class="h-44 bg-slate-900 relative overflow-hidden">
-                            <img src="${course.imageUrl || 'https://placehold.co/600x400/1B1446/F5B000?text=Curso+CEUT'}" alt="${course.title}" class="w-full h-full object-cover opacity-90 hover:opacity-100 transition-opacity" onerror="this.onerror=null; this.src='https://placehold.co/600x400/1B1446/F5B000?text=Curso+CEUT';">
-                            <span class="absolute top-3 right-3 text-xs font-mono font-bold px-2.5 py-1 bg-ceut-navy text-ceut-gold border border-ceut-gold/40 rounded-lg shadow">
-                                ${course.id}
-                            </span>
-                        </div>
-                        <div class="p-5 space-y-3">
-                            <h3 class="font-bold text-ceut-navy text-base line-clamp-2">${course.title}</h3>
-                            <p class="text-xs text-slate-600 line-clamp-3 leading-relaxed">${course.description}</p>
-                            <div class="pt-2 text-[11px] text-slate-500 space-y-1 border-t border-slate-100">
-                                <div class="flex items-center gap-1.5"><i class="fa-regular fa-calendar text-ceut-gold"></i> <span>Vigencia: <strong>${course.startDate || 'Sin fecha'}</strong> al <strong>${course.endDate || 'Sin fecha'}</strong></span></div>
-                                <div class="flex items-center gap-1.5"><i class="fa-regular fa-clock text-ceut-gold"></i> <span>Horario: <strong>${course.startTime || '08:00'} a ${course.endTime || '20:00'} hrs</strong></span></div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="p-5 pt-0">
-                        <button onclick="window.openRegistrationModal('${course.id}')" class="w-full py-3 bg-ceut-navy hover:bg-ceut-purple text-white font-extrabold text-xs rounded-xl shadow-md transition-colors flex items-center justify-center gap-2">
-                            <i class="fa-solid fa-user-plus text-ceut-gold"></i>
-                            <span>Inscribirse y Comenzar Curso</span>
-                        </button>
-                    </div>
-                </div>
-            `).join('');
-        };
-
-        // ADMIN ACCESS CONTROLS
-        window.openAdminPortal = function() {
-            if (window.isAdminLoggedIn) {
-                window.showAdminView();
-            } else {
-                const modal = document.getElementById('adminAuthModal');
-                if (modal) modal.classList.remove('hidden');
-            }
-        };
-
-        window.closeAdminAuthModal = function() {
-            const modal = document.getElementById('adminAuthModal');
-            if (modal) modal.classList.add('hidden');
-        };
-
-        window.verifyAdminPass = function(event) {
-            if (event) event.preventDefault();
-            const input = document.getElementById('adminPassInput');
-            const err = document.getElementById('adminAuthErr');
-            if (input && input.value === 'jcas1015') {
-                window.isAdminLoggedIn = true;
-                if (err) err.classList.add('hidden');
-                window.closeAdminAuthModal();
-                window.showAdminView();
-            } else {
-                if (err) err.classList.remove('hidden');
-            }
-        };
-
-        window.showAdminView = function() {
-            const secCat = document.getElementById('section-catalog');
-            const secPlay = document.getElementById('section-player');
-            const secAdm = document.getElementById('section-admin');
-
-            if (secCat) secCat.classList.add('hidden');
-            if (secPlay) secPlay.classList.add('hidden');
-            if (secAdm) secAdm.classList.remove('hidden');
-
-            window.switchAdminSubTab('users');
-        };
-
-        window.switchAdminSubTab = function(subTab) {
-            ['users', 'courses', 'certDesign'].forEach(v => {
-                const viewEl = document.getElementById(`adminSubView-${v}`);
-                const btnEl = document.getElementById(`adminSubBtn-${v}`);
-                if (viewEl) viewEl.classList.toggle('hidden', v !== subTab);
-                if (btnEl) {
-                    if (v === subTab) {
-                        btnEl.className = "pb-3 font-bold text-sm text-ceut-navy border-b-2 border-ceut-gold flex items-center gap-2";
-                    } else {
-                        btnEl.className = "pb-3 font-medium text-sm text-slate-500 hover:text-ceut-navy flex items-center gap-2";
-                    }
-                }
-            });
-
-            if (subTab === 'users') window.renderUsersMasterTable();
-            if (subTab === 'courses') window.renderAdminCoursesGrid();
-            if (subTab === 'certDesign') window.updateCertificatePreview();
-        };
-
-        // STUDENT LOGIN & ENROLLMENT MODAL HANDLERS
-        window.switchModalTab = function(tabName) {
-            const loginForm = document.getElementById('existingLoginForm');
-            const regForm = document.getElementById('enrollmentForm');
-            const btnLogin = document.getElementById('modalTabBtnLogin');
-            const btnReg = document.getElementById('modalTabBtnRegister');
-            const err = document.getElementById('loginAuthErrMsg');
-
-            if (err) err.classList.add('hidden');
-
-            if (tabName === 'login') {
-                if (loginForm) loginForm.classList.remove('hidden');
-                if (regForm) regForm.classList.add('hidden');
-                if (btnLogin) btnLogin.className = "flex-1 pb-2 border-b-2 border-ceut-gold text-ceut-navy flex items-center justify-center gap-1.5";
-                if (btnReg) btnReg.className = "flex-1 pb-2 border-b-2 border-transparent text-slate-400 hover:text-slate-600 flex items-center justify-center gap-1.5";
-            } else {
-                if (loginForm) loginForm.classList.add('hidden');
-                if (regForm) regForm.classList.remove('hidden');
-                if (btnReg) btnReg.className = "flex-1 pb-2 border-b-2 border-ceut-gold text-ceut-navy flex items-center justify-center gap-1.5";
-                if (btnLogin) btnLogin.className = "flex-1 pb-2 border-b-2 border-transparent text-slate-400 hover:text-slate-600 flex items-center justify-center gap-1.5";
-            }
-        };
-
-        window.openRegistrationModal = function(courseId) {
-            let course = window.coursesData.find(c => c.id === courseId);
-            if (!course && window.coursesData.length > 0) {
-                course = window.coursesData[0];
-            }
-
-            window.activeSelectedCourseForEnrollment = course;
-            
-            const titleSpans = document.querySelectorAll('.loginCourseTitleSpan');
-            const folioSpans = document.querySelectorAll('.loginCourseFolioSpan');
-
-            titleSpans.forEach(el => el.innerText = course ? course.title : '--');
-            folioSpans.forEach(el => el.innerText = course ? course.id : '--');
-
-            window.switchModalTab('login');
-
-            const modal = document.getElementById('registrationModal');
-            if (modal) modal.classList.remove('hidden');
-        };
-
-        window.closeRegistrationModal = function() {
-            const modal = document.getElementById('registrationModal');
-            if (modal) modal.classList.add('hidden');
-        };
-
-        window.handleExistingUserLogin = function(event) {
-            if (event) event.preventDefault();
-
-            const emailInput = document.getElementById('loginEmail');
-            const passwordInput = document.getElementById('loginPassword');
-            const err = document.getElementById('loginAuthErrMsg');
-
-            if (!emailInput || !passwordInput) return;
-
-            const email = emailInput.value.trim().toLowerCase();
-            const password = passwordInput.value.trim();
-
-            if (!email || !password) {
-                if (err) {
-                    err.innerText = "Por favor ingresa tu correo y contraseña.";
-                    err.classList.remove('hidden');
-                }
-                return;
-            }
-
-            let course = window.activeSelectedCourseForEnrollment;
-            if (!course && window.coursesData.length > 0) {
-                course = window.coursesData.find(c => c.roleCategory === window.currentTab) || window.coursesData[0];
-                window.activeSelectedCourseForEnrollment = course;
-            }
-
-            let user = window.registeredUsers.find(u => 
-                (u.email || '').toLowerCase() === email && (u.password || '') === password
-            );
-
-            if (!user) {
-                user = window.registeredUsers.find(u => (u.email || '').toLowerCase() === email);
-                if (user && user.password && user.password !== password) {
-                    if (err) {
-                        err.innerText = "La contraseña introducida es incorrecta.";
-                        err.classList.remove('hidden');
-                    }
-                    return;
-                }
-            }
-
-            if (!user) {
-                user = {
-                    id: 'usr_' + Date.now(),
-                    fullName: email.split('@')[0].toUpperCase(),
-                    email: email,
-                    password: password,
-                    academicTitle: '',
-                    roleCategory: course ? course.roleCategory : (window.currentTab || 'DOC'),
-                    folio: `${course ? course.id : 'CEUT_DOC_01'}_${Math.floor(100 + Math.random() * 900)}`,
-                    score: 0,
-                    progress: 0,
-                    hasAttempted: false
-                };
-                if (window.saveUserToFirestore) {
-                    window.saveUserToFirestore(user);
-                }
-            }
-
-            if (err) err.classList.add('hidden');
-
-            window.currentUserRecord = user;
-            window.closeRegistrationModal();
-
-            if (course) {
-                window.currentCourse = course;
-                window.currentCourseScores = {};
-
-                const folioEl = document.getElementById('playerCourseFolio');
-                const titleEl = document.getElementById('playerCourseTitle');
-                const datesEl = document.getElementById('playerCourseDates');
-                const timesEl = document.getElementById('playerCourseTimes');
-                const progressEl = document.getElementById('playerProgressPercentage');
-
-                if (folioEl) folioEl.innerText = course.id;
-                if (titleEl) titleEl.innerText = course.title;
-                if (datesEl) datesEl.innerText = `${course.startDate || '--'} al ${course.endDate || '--'}`;
-                if (timesEl) timesEl.innerText = `${course.startTime || '08:00'} a ${course.endTime || '20:00'}`;
-                if (progressEl) progressEl.innerText = `${user.score || user.progress || 0}%`;
-            }
-
-            const secCat = document.getElementById('section-catalog');
-            const secPlay = document.getElementById('section-player');
-            const secAdm = document.getElementById('section-admin');
-
-            if (secCat) secCat.classList.add('hidden');
-            if (secAdm) secAdm.classList.add('hidden');
-            if (secPlay) secPlay.classList.remove('hidden');
-
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-
-            if (typeof window.loadModuleInPlayer === 'function') {
-                window.loadModuleInPlayer(0);
-            }
-        };
-
-        // INICIALIZADOR AL CARGAR LA PÁGINA
-        window.onload = function() {
-            window.selectCategoryTab('DOC');
-        };
-    </script>
-</body>
-</html>
+<!-- ... existing code -->

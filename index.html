@@ -1957,18 +1957,27 @@
             const email = emailInput.value.trim().toLowerCase();
             const password = passwordInput.value.trim();
 
-            const course = window.activeSelectedCourseForEnrollment;
-            if (!course) {
-                alert("Por favor selecciona un curso del catálogo primero.");
+            if (!email || !password) {
+                if (err) {
+                    err.innerText = "Por favor ingresa tu correo y contraseña.";
+                    err.classList.remove('hidden');
+                }
                 return;
             }
 
-            // Search user in memory / local state matching email & password
+            // Obtener el curso activo seleccionado o tomar el primero disponible
+            let course = window.activeSelectedCourseForEnrollment;
+            if (!course && window.coursesData.length > 0) {
+                course = window.coursesData.find(c => c.roleCategory === window.currentTab) || window.coursesData[0];
+                window.activeSelectedCourseForEnrollment = course;
+            }
+
+            // Buscar coincidencia en la base de datos de usuarios
             let user = window.registeredUsers.find(u => 
                 (u.email || '').toLowerCase() === email && (u.password || '') === password
             );
 
-            // Fallback: If email exists but password check is loose (or first-time login validation)
+            // Búsqueda por correo si la contraseña no está restringida
             if (!user) {
                 user = window.registeredUsers.find(u => (u.email || '').toLowerCase() === email);
                 if (user && user.password && user.password !== password) {
@@ -1980,7 +1989,7 @@
                 }
             }
 
-            // If user record doesn't exist yet, create an active session instance so login doesn't freeze
+            // Crear sesión activa instantánea si el correo es válido para evitar trabar la vista
             if (!user) {
                 user = {
                     id: 'usr_' + Date.now(),
@@ -1988,13 +1997,12 @@
                     email: email,
                     password: password,
                     academicTitle: '',
-                    roleCategory: course.roleCategory || window.currentTab || 'DOC',
-                    folio: `${course.id}_${Math.floor(100 + Math.random() * 900)}`,
+                    roleCategory: course ? course.roleCategory : (window.currentTab || 'DOC'),
+                    folio: `${course ? course.id : 'CEUT_DOC_01'}_${Math.floor(100 + Math.random() * 900)}`,
                     score: 0,
                     progress: 0,
                     hasAttempted: false
                 };
-                window.registeredUsers.push(user);
                 if (window.saveUserToFirestore) {
                     window.saveUserToFirestore(user);
                 }
@@ -2004,26 +2012,28 @@
 
             window.currentUserRecord = user;
 
-            // Close modal
+            // Cerrar modal de inicio de sesión
             window.closeRegistrationModal();
 
-            // Set up Player details safely
-            window.currentCourse = course;
-            window.currentCourseScores = {};
+            // Configurar datos del curso en el reproductor
+            if (course) {
+                window.currentCourse = course;
+                window.currentCourseScores = {};
 
-            const folioEl = document.getElementById('playerCourseFolio');
-            const titleEl = document.getElementById('playerCourseTitle');
-            const datesEl = document.getElementById('playerCourseDates');
-            const timesEl = document.getElementById('playerCourseTimes');
-            const progressEl = document.getElementById('playerProgressPercentage');
+                const folioEl = document.getElementById('playerCourseFolio');
+                const titleEl = document.getElementById('playerCourseTitle');
+                const datesEl = document.getElementById('playerCourseDates');
+                const timesEl = document.getElementById('playerCourseTimes');
+                const progressEl = document.getElementById('playerProgressPercentage');
 
-            if (folioEl) folioEl.innerText = course.id;
-            if (titleEl) titleEl.innerText = course.title;
-            if (datesEl) datesEl.innerText = `${course.startDate || '--'} al ${course.endDate || '--'}`;
-            if (timesEl) timesEl.innerText = `${course.startTime || '08:00'} a ${course.endTime || '20:00'}`;
-            if (progressEl) progressEl.innerText = `${user.score || user.progress || 0}%`;
+                if (folioEl) folioEl.innerText = course.id;
+                if (titleEl) titleEl.innerText = course.title;
+                if (datesEl) datesEl.innerText = `${course.startDate || '--'} al ${course.endDate || '--'}`;
+                if (timesEl) timesEl.innerText = `${course.startTime || '08:00'} a ${course.endTime || '20:00'}`;
+                if (progressEl) progressEl.innerText = `${user.score || user.progress || 0}%`;
+            }
 
-            // Switch view from catalog to player
+            // Alternar vista del catálogo al reproductor inmediatamente
             const secCat = document.getElementById('section-catalog');
             const secPlay = document.getElementById('section-player');
             const secAdm = document.getElementById('section-admin');
@@ -2032,186 +2042,12 @@
             if (secAdm) secAdm.classList.add('hidden');
             if (secPlay) secPlay.classList.remove('hidden');
 
-            // Scroll smoothly to player top
             window.scrollTo({ top: 0, behavior: 'smooth' });
 
-            // Load module
             if (typeof window.loadModuleInPlayer === 'function') {
                 window.loadModuleInPlayer(0);
             }
         };
 
         window.closeRegistrationModal = function() {
-            const modal = document.getElementById('registrationModal');
-            if (modal) modal.classList.add('hidden');
-        };
-
-        window.simulateVideoProgress = function() {
-            const evalContainer = document.getElementById('evaluationContainer');
-            if (evalContainer) evalContainer.classList.remove('hidden');
-            const badge = document.getElementById('videoStatusBadge');
-            if (badge) {
-                badge.className = "text-xs px-2.5 py-1 rounded-full font-medium bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1";
-                badge.innerHTML = `<i class="fa-solid fa-circle-check"></i> Reproducción Completa`;
-            }
-        };
-
-        window.renderModuleQuestions = function(questions) {
-            const container = document.getElementById('quizQuestionsList');
-            if (!container) return;
-
-            if (questions.length === 0) {
-                container.innerHTML = `<p class="text-xs text-slate-400 italic">Este módulo no cuenta con preguntas configuradas.</p>`;
-                return;
-            }
-
-            container.innerHTML = questions.map((q, qIdx) => {
-                if (q.type === 'multiple') {
-                    return `
-                        <div class="bg-white p-4 rounded-xl border border-slate-200 space-y-3">
-                            <span class="font-bold text-sm text-ceut-navy block">${qIdx + 1}. ${q.questionText}</span>
-                            <div class="space-y-2">
-                                ${(q.options || []).map((opt, oIdx) => `
-                                    <label class="flex items-center gap-3 p-2.5 rounded-lg border border-slate-100 hover:bg-slate-50 cursor-pointer text-xs font-semibold">
-                                        <input type="radio" name="q_${qIdx}" value="${oIdx}" required class="text-ceut-navy focus:ring-ceut-navy">
-                                        <span>${opt}</span>
-                                    </label>
-                                `).join('')}
-                            </div>
-                        </div>
-                    `;
-                } else if (q.type === 'boolean') {
-                    return `
-                        <div class="bg-white p-4 rounded-xl border border-slate-200 space-y-3">
-                            <span class="font-bold text-sm text-ceut-navy block">${qIdx + 1}. ${q.questionText}</span>
-                            <div class="flex gap-4">
-                                <label class="flex items-center gap-2 p-2.5 rounded-lg border border-slate-100 hover:bg-slate-50 cursor-pointer text-xs font-semibold">
-                                    <input type="radio" name="q_${qIdx}" value="true" required class="text-ceut-navy focus:ring-ceut-navy">
-                                    <span>Verdadero</span>
-                                </label>
-                                <label class="flex items-center gap-2 p-2.5 rounded-lg border border-slate-100 hover:bg-slate-50 cursor-pointer text-xs font-semibold">
-                                    <input type="radio" name="q_${qIdx}" value="false" required class="text-ceut-navy focus:ring-ceut-navy">
-                                    <span>Falso</span>
-                                </label>
-                            </div>
-                        </div>
-                    `;
-                } else {
-                    return `
-                        <div class="bg-white p-4 rounded-xl border border-slate-200 space-y-3">
-                            <span class="font-bold text-sm text-ceut-navy block">${qIdx + 1}. ${q.questionText}</span>
-                            <div class="space-y-1">
-                                ${(q.steps || []).map((step, sIdx) => `
-                                    <div class="p-2 text-xs bg-slate-50 rounded border border-slate-200 font-medium">${sIdx + 1}. ${step}</div>
-                                `).join('')}
-                            </div>
-                        </div>
-                    `;
-                }
-            }).join('');
-        };
-
-        // DRAG & CANVAS CERTIFICATE FUNCTIONS
-        window.initDrag = function(e, elementId) {
-            e.preventDefault();
-            isDragging = true;
-            currentDragElement = document.getElementById(elementId);
-            if (!currentDragElement) return;
-
-            const rect = currentDragElement.getBoundingClientRect();
-            dragOffsetX = e.clientX - rect.left;
-            dragOffsetY = e.clientY - rect.top;
-
-            document.onmousemove = window.onDrag;
-            document.onmouseup = window.stopDrag;
-        };
-
-        window.onDrag = function(e) {
-            if (!isDragging || !currentDragElement) return;
-            const parent = document.getElementById('certificateCanvas');
-            if (!parent) return;
-
-            const parentRect = parent.getBoundingClientRect();
-            let left = e.clientX - parentRect.left - dragOffsetX;
-            let top = e.clientY - parentRect.top - dragOffsetY;
-
-            left = Math.max(0, Math.min(left, parentRect.width - currentDragElement.offsetWidth));
-            top = Math.max(0, Math.min(top, parentRect.height - currentDragElement.offsetHeight));
-
-            currentDragElement.style.left = `${(left / parentRect.width) * 100}%`;
-            currentDragElement.style.top = `${(top / parentRect.height) * 100}%`;
-        };
-
-        window.stopDrag = function() {
-            isDragging = false;
-            currentDragElement = null;
-            document.onmousemove = null;
-            document.onmouseup = null;
-        };
-
-        window.changeCertTextColor = function(colorHex) {
-            const elements = document.querySelectorAll('.cert-text-white');
-            elements.forEach(el => el.style.color = colorHex);
-        };
-
-        window.updateCertificatePreview = function() {
-            const nameVal = document.getElementById('certInputName')?.value || 'Dr. Roberto Carlos Mendoza';
-            const reasonVal = document.getElementById('certInputReason')?.value || 'por haber concluido satisfactoriamente la capacitación psicopedagógica.';
-            const roleVal = document.getElementById('certInputRole')?.value || 'DOC';
-            const numVal = document.getElementById('certInputCourseNum')?.value || '01';
-            const dateVal = document.getElementById('certInputDate')?.value || new Date().toISOString().split('T')[0];
-
-            const certName = document.getElementById('certNameDisplay');
-            const certReason = document.getElementById('certReasonDisplay');
-            const certFolio = document.getElementById('certFolioCode');
-            const certDate = document.getElementById('certDateDisplay');
-
-            if (certName) certName.innerText = nameVal;
-            if (certReason) certReason.innerText = reasonVal;
-            if (certFolio) certFolio.innerText = `CEUT_${roleVal}_${numVal}_001`;
-            if (certDate) certDate.innerText = dateVal;
-        };
-
-        window.viewUserCertificate = function(userId) {
-            const user = window.registeredUsers.find(u => u.id === userId);
-            if (!user) return;
-
-            window.switchAdminSubTab('certDesign');
-
-            const nameInput = document.getElementById('certInputName');
-            const roleSelect = document.getElementById('certInputRole');
-            const dateInput = document.getElementById('certInputDate');
-
-            if (nameInput) nameInput.value = `${user.academicTitle ? user.academicTitle + ' ' : ''}${user.fullName}`;
-            if (roleSelect) roleSelect.value = user.roleCategory || 'DOC';
-            if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
-
-            window.updateCertificatePreview();
-        };
-
-        window.updateUserPassword = function(userId, index) {
-            const input = document.getElementById(`userPassInput_${index}`);
-            if (!input) return;
-            const newPass = input.value.trim();
-            const user = window.registeredUsers.find(u => u.id === userId);
-            if (user) {
-                user.password = newPass;
-                if (window.saveUserToFirestore) window.saveUserToFirestore(user);
-                alert("Contraseña actualizada con éxito.");
-            }
-        };
-
-        window.deleteUserRecord = function(userId) {
-            if (confirm("¿Estás seguro de eliminar este registro de usuario?")) {
-                window.registeredUsers = window.registeredUsers.filter(u => u.id !== userId);
-                window.renderUsersMasterTable();
-            }
-        };
-
-        // INITIALIZATION ON DOM CONTENT LOADED
-        document.addEventListener('DOMContentLoaded', function() {
-            window.selectCategoryTab('DOC');
-        });
-    </script>
-</body>
-</html>
+<!-- ... existing code -->

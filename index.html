@@ -246,31 +246,7 @@
                         <!-- VIDEO PLAYER CONTAINER -->
                         <div class="aspect-video bg-slate-900 rounded-xl overflow-hidden shadow-inner flex items-center justify-center relative border border-slate-800">
                             <iframe id="youtubeIframe" class="w-full h-full hidden" src="" title="Video del Módulo" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
-                            
-                            <!-- FALLBACK INTERACTIVE DIRECT PLAYER PANEL -->
-                            <div id="simulatedPlayer" class="flex flex-col items-center justify-center text-center p-6 space-y-4 w-full h-full bg-gradient-to-b from-slate-900 to-ceut-navy">
-                                <div class="w-16 h-16 rounded-full bg-ceut-navy border-2 border-ceut-gold text-ceut-gold flex items-center justify-center text-2xl shadow-xl animate-pulse">
-                                    <i class="fa-solid fa-play ml-1"></i>
-                                </div>
-                                <div>
-                                    <h4 id="simulatedTitle" class="font-bold text-white text-base">Módulo 1: Introducción a la Capacitación</h4>
-                                    <p class="text-xs text-slate-300 mt-1">Haz clic abajo para reproducir el video o abrir el material interactivo.</p>
-                                </div>
-
-                                <div id="directMediaActionBox" class="hidden flex flex-wrap items-center justify-center gap-3 pt-2">
-                                    <a id="btnDirectVideoOpen" href="#" target="_blank" rel="noopener noreferrer" class="px-5 py-2.5 bg-ceut-gold hover:bg-ceut-goldDark text-ceut-navy font-black text-xs rounded-xl shadow-lg flex items-center gap-2 transition-all">
-                                        <i class="fa-solid fa-play text-base"></i> Abrir Video / Recurso Principal
-                                    </a>
-                                </div>
-
-                                <div class="w-48 h-1.5 bg-slate-700 rounded-full overflow-hidden mt-2">
-                                    <div id="simulatedProgressBar" class="h-full bg-ceut-gold w-0 transition-all duration-300"></div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- MATERIAL RESOURCES (PDF / PRESENTATION / ARTICLE DETAILS & EMBED VIEW) -->
-
+                            <div id="simulatedPlayer" class="flex flex-col items-center justify-center text-center p-6 space-y-3">
                                 <div class="w-16 h-16 rounded-full bg-ceut-navy border-2 border-ceut-gold text-ceut-gold flex items-center justify-center text-2xl shadow-lg">
                                     <i class="fa-solid fa-play ml-1"></i>
                                 </div>
@@ -1125,42 +1101,35 @@
         window.registeredUsers = window.registeredUsers || [];
         window.currentTab = window.currentTab || 'DOC';
 
-        // FORMAT EMBED YOUTUBE, DRIVE & DOCUMENT URL HELPER (EXTENDED & SAFE)
+        // COMPREHENSIVE RESOURCE & MEDIA PARSER (YOUTUBE, DRIVE, GOOGLE DOCS/SLIDES & PDF)
         window.formatEmbedUrl = function(url) {
             if (!url) return '';
             let formatted = url.trim();
 
-            // 1. Clean data/blob URIs
+            // 1. Pass Data & Blob URIs directly
             if (formatted.startsWith('data:') || formatted.startsWith('blob:')) {
                 return formatted;
             }
             
-            // 2. YouTube Links Parser (Handles watch?v=, short URLs, embeds, playlists)
-            if (formatted.includes('youtube.com/watch') || formatted.includes('m.youtube.com/watch')) {
-                try {
-                    const match = formatted.match(/(?:v=|\/embed\/|\/shorts\/)([a-zA-Z0-9_-]{11})/);
-                    if (match && match[1]) {
-                        return `https://www.youtube.com/embed/${match[1]}?autoplay=0&rel=0&enablejsapi=1`;
-                    }
-                } catch(e){}
-            } else if (formatted.includes('youtu.be/')) {
-                const match = formatted.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
-                if (match && match[1]) {
-                    return `https://www.youtube.com/embed/${match[1]}?autoplay=0&rel=0`;
+            // 2. Comprehensive YouTube URL Normalizer
+            if (formatted.includes('youtube.com') || formatted.includes('youtu.be')) {
+                let videoId = '';
+                if (formatted.includes('youtu.be/')) {
+                    videoId = formatted.split('youtu.be/')[1]?.split(/[?&]/)[0];
+                } else if (formatted.includes('watch?v=')) {
+                    videoId = formatted.split('watch?v=')[1]?.split('&')[0];
+                } else if (formatted.includes('/embed/')) {
+                    videoId = formatted.split('/embed/')[1]?.split(/[?&]/)[0];
+                } else if (formatted.includes('/shorts/')) {
+                    videoId = formatted.split('/shorts/')[1]?.split(/[?&]/)[0];
                 }
-            } else if (formatted.includes('youtube.com/embed/')) {
-                const match = formatted.match(/\/embed\/([a-zA-Z0-9_-]{11})/);
-                if (match && match[1]) {
-                    return `https://www.youtube.com/embed/${match[1]}?autoplay=0&rel=0`;
-                }
-            } else if (formatted.includes('youtube.com/shorts/')) {
-                const match = formatted.match(/\/shorts\/([a-zA-Z0-9_-]{11})/);
-                if (match && match[1]) {
-                    return `https://www.youtube.com/embed/${match[1]}?autoplay=0&rel=0`;
+
+                if (videoId && videoId.length >= 11) {
+                    return `https://www.youtube-nocookie.com/embed/${videoId.substring(0, 11)}?rel=0&autoplay=0&enablejsapi=1`;
                 }
             }
 
-            // 3. Google Drive & Google Docs / Slides Parser
+            // 3. Google Drive / Docs / Slides Embed Transformer
             if (formatted.includes('drive.google.com/file/d/')) {
                 const parts = formatted.split('/d/');
                 if (parts[1]) {
@@ -1181,7 +1150,7 @@
                 }
             }
 
-            // 4. Remote PDF or Documents via Google Docs Viewer
+            // 4. Remote PDF & Office Documents via Google Viewer
             const lower = formatted.toLowerCase();
             if (lower.endsWith('.pdf') || lower.includes('.pdf?') || lower.includes('.doc') || lower.includes('.ppt') || lower.includes('.pptx')) {
                 return `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(formatted)}`;
@@ -1207,24 +1176,16 @@
             const iframe = document.getElementById('youtubeIframe');
             const simPlayer = document.getElementById('simulatedPlayer');
             const simTitle = document.getElementById('simulatedTitle');
-            const directActionBox = document.getElementById('directMediaActionBox');
-            const btnDirectOpen = document.getElementById('btnDirectVideoOpen');
 
             const videoRawUrl = currentMod.videoUrl || currentMod.video || '';
             if (videoRawUrl && videoRawUrl.trim() !== '') {
                 const embedSrc = window.formatEmbedUrl(videoRawUrl);
-
                 if (iframe) {
                     iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share');
                     iframe.src = embedSrc;
                     iframe.classList.remove('hidden');
                 }
-
                 if (simPlayer) simPlayer.classList.add('hidden');
-                if (directActionBox && btnDirectOpen) {
-                    btnDirectOpen.href = videoRawUrl;
-                    directActionBox.classList.remove('hidden');
-                }
             } else {
                 if (iframe) {
                     iframe.src = '';
@@ -1232,7 +1193,6 @@
                 }
                 if (simPlayer) simPlayer.classList.remove('hidden');
                 if (simTitle) simTitle.innerText = currentMod.title || 'Módulo de Capacitación';
-                if (directActionBox) directActionBox.classList.add('hidden');
             }
 
             // Render PDF / Material Resources
@@ -1323,7 +1283,6 @@
         window.selectCategoryTab = function(categoryCode) {
             window.currentTab = categoryCode;
 
-            // Ocultar reproductor y portal administrativo, mostrar catálogo
             const secCatalog = document.getElementById('section-catalog');
             const secPlayer = document.getElementById('section-player');
             const secAdmin = document.getElementById('section-admin');
@@ -1332,7 +1291,6 @@
             if (secPlayer) secPlayer.classList.add('hidden');
             if (secAdmin) secAdmin.classList.add('hidden');
 
-            // Actualizar estilo visual de los botones de navegación principales
             ['DOC', 'AUL', 'ADM'].forEach(cat => {
                 const btn = document.getElementById(`nav-btn-${cat}`);
                 if (btn) {
@@ -1346,7 +1304,6 @@
                 }
             });
 
-            // Titulos y badges por categoría
             const titleHeader = document.getElementById('catalogTitleHeader');
             const subHeader = document.getElementById('catalogSubHeader');
             const badgeHeader = document.getElementById('activeCategoryBadge');
@@ -1365,11 +1322,10 @@
                 if (badgeHeader) badgeHeader.innerText = 'CATEGORÍA: ADMINISTRATIVOS (ADM)';
             }
 
-            // Renderizar la lista de cursos filtrados
             window.renderCatalog();
         };
 
-        // RENDERIZAR GRILA DE CURSOS EN EL CATÁLOGO
+        // RENDERIZAR GRILLA DE CURSOS EN EL CATÁLOGO
         window.renderCatalog = function() {
             const grid = document.getElementById('courseGrid');
             if (!grid) return;

@@ -1215,6 +1215,7 @@
                 if (iframe) {
                     iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share');
                     iframe.src = embedSrc;
+                    iframe.removeAttribute('srcdoc');
                     iframe.classList.remove('hidden');
                 }
                 if (simPlayer) simPlayer.classList.add('hidden');
@@ -1268,6 +1269,15 @@
                             </a>` : ''}
                         </div>
                     `;
+
+                    // Si no hay video pero sí hay PDF/Recurso, cargar automáticamente el recurso en el visor del reproductor
+                    if (!videoRawUrl || videoRawUrl.trim() === '') {
+                        if (iframe) {
+                            iframe.src = window.formatEmbedUrl(resUrl);
+                            iframe.classList.remove('hidden');
+                        }
+                        if (simPlayer) simPlayer.classList.add('hidden');
+                    }
                 } else {
                     materialsContent.innerHTML = `
                         <div class="flex items-center gap-2 text-slate-400 italic">

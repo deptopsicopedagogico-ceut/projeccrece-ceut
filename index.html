@@ -1101,23 +1101,55 @@
         window.registeredUsers = window.registeredUsers || [];
         window.currentTab = window.currentTab || 'DOC';
 
-        // FORMAT EMBED YOUTUBE & DRIVE URL HELPER
+        // FORMAT EMBED YOUTUBE, DRIVE & DOCUMENT URL HELPER
         window.formatEmbedUrl = function(url) {
             if (!url) return '';
             let formatted = url.trim();
-            if (formatted.includes('youtube.com/watch?v=')) {
-                const videoId = formatted.split('v=')[1].split('&')[0];
-                return `https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0`;
+            
+            // YouTube Links Parser
+            if (formatted.includes('youtube.com/watch')) {
+                try {
+                    const urlObj = new URL(formatted);
+                    const videoId = urlObj.searchParams.get('v');
+                    if (videoId) return `https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0&enablejsapi=1`;
+                } catch(e){}
             } else if (formatted.includes('youtu.be/')) {
-                const videoId = formatted.split('youtu.be/')[1].split('?')[0];
-                return `https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0`;
-            } else if (formatted.includes('drive.google.com/file/d/')) {
-                const fileId = formatted.split('/d/')[1].split('/')[0];
-                return `https://drive.google.com/file/d/${fileId}/preview`;
-            } else if (formatted.includes('docs.google.com/presentation/d/')) {
-                const fileId = formatted.split('/d/')[1].split('/')[0];
-                return `https://docs.google.com/presentation/d/${fileId}/embed?start=false&loop=false&delayms=3000`;
+                const parts = formatted.split('youtu.be/');
+                if (parts[1]) {
+                    const videoId = parts[1].split('?')[0].split('&')[0];
+                    return `https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0&enablejsapi=1`;
+                }
+            } else if (formatted.includes('youtube.com/embed/')) {
+                return formatted;
+            } else if (formatted.includes('youtube.com/shorts/')) {
+                const parts = formatted.split('youtube.com/shorts/');
+                if (parts[1]) {
+                    const videoId = parts[1].split('?')[0];
+                    return `https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0`;
+                }
             }
+
+            // Google Drive & Google Docs / Slides Parser
+            if (formatted.includes('drive.google.com/file/d/')) {
+                const parts = formatted.split('/d/');
+                if (parts[1]) {
+                    const fileId = parts[1].split('/')[0];
+                    return `https://drive.google.com/file/d/${fileId}/preview`;
+                }
+            } else if (formatted.includes('docs.google.com/presentation/d/')) {
+                const parts = formatted.split('/d/');
+                if (parts[1]) {
+                    const fileId = parts[1].split('/')[0];
+                    return `https://docs.google.com/presentation/d/${fileId}/embed?start=false&loop=false&delayms=3000`;
+                }
+            } else if (formatted.includes('docs.google.com/document/d/')) {
+                const parts = formatted.split('/d/');
+                if (parts[1]) {
+                    const fileId = parts[1].split('/')[0];
+                    return `https://docs.google.com/document/d/${fileId}/pub?embedded=true`;
+                }
+            }
+
             return formatted;
         };
 
@@ -1139,8 +1171,9 @@
             const simPlayer = document.getElementById('simulatedPlayer');
             const simTitle = document.getElementById('simulatedTitle');
 
-            if (currentMod.videoUrl && currentMod.videoUrl.trim() !== '') {
-                const embedSrc = window.formatEmbedUrl(currentMod.videoUrl);
+            const videoRawUrl = currentMod.videoUrl || currentMod.video || '';
+            if (videoRawUrl && videoRawUrl.trim() !== '') {
+                const embedSrc = window.formatEmbedUrl(videoRawUrl);
                 if (iframe) {
                     iframe.src = embedSrc;
                     iframe.classList.remove('hidden');
@@ -1230,8 +1263,10 @@
 
             if (lowerUrl.includes('drive.google.com') || lowerUrl.includes('docs.google.com')) {
                 formattedUrl = window.formatEmbedUrl(url);
-            } else if (lowerUrl.endsWith('.pdf')) {
+            } else if (lowerUrl.startsWith('data:application/pdf') || lowerUrl.startsWith('blob:')) {
                 formattedUrl = url;
+            } else if (lowerUrl.endsWith('.pdf')) {
+                formattedUrl = `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`;
             } else {
                 formattedUrl = `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`;
             }

@@ -246,7 +246,31 @@
                         <!-- VIDEO PLAYER CONTAINER -->
                         <div class="aspect-video bg-slate-900 rounded-xl overflow-hidden shadow-inner flex items-center justify-center relative border border-slate-800">
                             <iframe id="youtubeIframe" class="w-full h-full hidden" src="" title="Video del Módulo" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
-                            <div id="simulatedPlayer" class="flex flex-col items-center justify-center text-center p-6 space-y-3">
+                            
+                            <!-- FALLBACK INTERACTIVE DIRECT PLAYER PANEL -->
+                            <div id="simulatedPlayer" class="flex flex-col items-center justify-center text-center p-6 space-y-4 w-full h-full bg-gradient-to-b from-slate-900 to-ceut-navy">
+                                <div class="w-16 h-16 rounded-full bg-ceut-navy border-2 border-ceut-gold text-ceut-gold flex items-center justify-center text-2xl shadow-xl animate-pulse">
+                                    <i class="fa-solid fa-play ml-1"></i>
+                                </div>
+                                <div>
+                                    <h4 id="simulatedTitle" class="font-bold text-white text-base">Módulo 1: Introducción a la Capacitación</h4>
+                                    <p class="text-xs text-slate-300 mt-1">Haz clic abajo para reproducir el video o abrir el material interactivo.</p>
+                                </div>
+
+                                <div id="directMediaActionBox" class="hidden flex flex-wrap items-center justify-center gap-3 pt-2">
+                                    <a id="btnDirectVideoOpen" href="#" target="_blank" rel="noopener noreferrer" class="px-5 py-2.5 bg-ceut-gold hover:bg-ceut-goldDark text-ceut-navy font-black text-xs rounded-xl shadow-lg flex items-center gap-2 transition-all">
+                                        <i class="fa-solid fa-play text-base"></i> Abrir Video / Recurso Principal
+                                    </a>
+                                </div>
+
+                                <div class="w-48 h-1.5 bg-slate-700 rounded-full overflow-hidden mt-2">
+                                    <div id="simulatedProgressBar" class="h-full bg-ceut-gold w-0 transition-all duration-300"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- MATERIAL RESOURCES (PDF / PRESENTATION / ARTICLE DETAILS & EMBED VIEW) -->
+
                                 <div class="w-16 h-16 rounded-full bg-ceut-navy border-2 border-ceut-gold text-ceut-gold flex items-center justify-center text-2xl shadow-lg">
                                     <i class="fa-solid fa-play ml-1"></i>
                                 </div>
@@ -1111,28 +1135,28 @@
                 return formatted;
             }
             
-            // 2. YouTube Links Parser (Handles channel tags, timestamps, watch?v=, short URLs, embeds)
+            // 2. YouTube Links Parser (Handles watch?v=, short URLs, embeds, playlists)
             if (formatted.includes('youtube.com/watch') || formatted.includes('m.youtube.com/watch')) {
                 try {
                     const match = formatted.match(/(?:v=|\/embed\/|\/shorts\/)([a-zA-Z0-9_-]{11})/);
                     if (match && match[1]) {
-                        return `https://www.youtube-nocookie.com/embed/${match[1]}?autoplay=0&rel=0&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`;
+                        return `https://www.youtube.com/embed/${match[1]}?autoplay=0&rel=0&enablejsapi=1`;
                     }
                 } catch(e){}
             } else if (formatted.includes('youtu.be/')) {
                 const match = formatted.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
                 if (match && match[1]) {
-                    return `https://www.youtube-nocookie.com/embed/${match[1]}?autoplay=0&rel=0&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`;
+                    return `https://www.youtube.com/embed/${match[1]}?autoplay=0&rel=0`;
                 }
             } else if (formatted.includes('youtube.com/embed/')) {
                 const match = formatted.match(/\/embed\/([a-zA-Z0-9_-]{11})/);
                 if (match && match[1]) {
-                    return `https://www.youtube-nocookie.com/embed/${match[1]}?autoplay=0&rel=0&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`;
+                    return `https://www.youtube.com/embed/${match[1]}?autoplay=0&rel=0`;
                 }
             } else if (formatted.includes('youtube.com/shorts/')) {
                 const match = formatted.match(/\/shorts\/([a-zA-Z0-9_-]{11})/);
                 if (match && match[1]) {
-                    return `https://www.youtube-nocookie.com/embed/${match[1]}?autoplay=0&rel=0`;
+                    return `https://www.youtube.com/embed/${match[1]}?autoplay=0&rel=0`;
                 }
             }
 
@@ -1183,16 +1207,24 @@
             const iframe = document.getElementById('youtubeIframe');
             const simPlayer = document.getElementById('simulatedPlayer');
             const simTitle = document.getElementById('simulatedTitle');
+            const directActionBox = document.getElementById('directMediaActionBox');
+            const btnDirectOpen = document.getElementById('btnDirectVideoOpen');
 
             const videoRawUrl = currentMod.videoUrl || currentMod.video || '';
             if (videoRawUrl && videoRawUrl.trim() !== '') {
                 const embedSrc = window.formatEmbedUrl(videoRawUrl);
+
                 if (iframe) {
                     iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share');
                     iframe.src = embedSrc;
                     iframe.classList.remove('hidden');
                 }
+
                 if (simPlayer) simPlayer.classList.add('hidden');
+                if (directActionBox && btnDirectOpen) {
+                    btnDirectOpen.href = videoRawUrl;
+                    directActionBox.classList.remove('hidden');
+                }
             } else {
                 if (iframe) {
                     iframe.src = '';
@@ -1200,6 +1232,7 @@
                 }
                 if (simPlayer) simPlayer.classList.remove('hidden');
                 if (simTitle) simTitle.innerText = currentMod.title || 'Módulo de Capacitación';
+                if (directActionBox) directActionBox.classList.add('hidden');
             }
 
             // Render PDF / Material Resources

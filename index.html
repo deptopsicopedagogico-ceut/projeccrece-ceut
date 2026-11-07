@@ -257,13 +257,20 @@
                             </div>
                         </div>
 
-                        <!-- MATERIAL RESOURCES (PDF / PRESENTATION / ARTICLE DETAILS) -->
+                        <!-- MATERIAL RESOURCES (PDF / PRESENTATION / ARTICLE DETAILS & EMBED VIEW) -->
                         <div id="moduleMaterialsBox" class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
                             <h4 class="text-xs font-bold text-ceut-navy uppercase tracking-wider flex items-center gap-2 border-b pb-2 border-slate-200">
                                 <i class="fa-solid fa-folder-open text-ceut-gold"></i> Recurso / Material de Aprendizaje (PDF / Presentación / Artículo)
                             </h4>
                             <div id="materialsContent" class="text-xs text-slate-600 flex flex-wrap items-center justify-between gap-3">
                                 <!-- Dynamic Resource Display -->
+                            </div>
+                            <div id="materialPreviewIframeContainer" class="hidden mt-3 pt-3 border-t border-slate-200">
+                                <span class="text-[11px] font-bold text-slate-700 block mb-2 flex items-center justify-between">
+                                    <span><i class="fa-solid fa-eye text-ceut-gold mr-1"></i> Previsualizador Integrado de Lectura</span>
+                                    <button type="button" onclick="window.toggleInlineMaterialPreview()" class="text-[10px] text-ceut-navy underline hover:text-ceut-purple">Cerrar Visor</button>
+                                </span>
+                                <iframe id="materialInlineIframe" class="w-full h-96 border border-slate-300 rounded-lg bg-white shadow-inner" src=""></iframe>
                             </div>
                         </div>
 
@@ -962,6 +969,11 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+        // GLOBAL INITIALIZATION SAFEGUARDS TO PREVENT UNDEFINED ARRAY ERRORS
+        window.coursesData = window.coursesData || [];
+        window.registeredUsers = window.registeredUsers || [];
+        window.currentTab = window.currentTab || 'DOC';
+
         // CONFIGURACIÓN OFICIAL PROJECCRECE-CEUT
         const firebaseConfig = {
             apiKey: "AIzaSyAuNxgzud9bWKRnVSouuIPPCnHse821i-8",
@@ -1084,71 +1096,155 @@
     </script>
 
     <script>
-        // ESTADO GLOBAL ÚNICO
-        window.coursesData = window.coursesData || [
-            {
-                id: 'CEUT_DOC_01',
-                roleCategory: 'DOC',
-                title: 'Capacitación Psicopedagógica Institucional',
-                description: 'Desarrollo de estrategias pedagógicas avanzadas y habilidades psicoeducativas para docentes CEUT.',
-                imageUrl: 'https://placehold.co/600x400/1B1446/F5B000?text=Curso+Docentes',
-                startDate: '2026-01-15',
-                endDate: '2026-12-20',
-                startTime: '08:00',
-                endTime: '20:00',
-                modules: [
-                    {
-                        title: 'Módulo 1: Introducción a la Capacitación Psicopedagógica',
-                        videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-                        materialUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-                        questions: [
-                            {
-                                type: 'multiple',
-                                questionText: '¿Cuál es el objetivo principal del acompañamiento psicopedagógico?',
-                                options: [
-                                    'Potenciar el desarrollo integral y el aprendizaje del estudiante',
-                                    'Automatizar únicamente las calificaciones',
-                                    'Reemplazar la labor directiva',
-                                    'Ninguna de las anteriores'
-                                ],
-                                correctIndex: 0,
-                                feedback: 'El acompañamiento psicopedagógico busca potenciar el aprendizaje integral adaptado al estudiante.'
-                            }
-                        ]
-                    }
-                ]
-            }
-        ];
-
+        // GLOBAL STATE SAFEGUARDS
+        window.coursesData = window.coursesData || [];
         window.registeredUsers = window.registeredUsers || [];
-        window.currentTab = 'DOC';
-        window.currentCourse = null;
-        window.currentModuleIndex = 0;
-        window.activeSelectedCourseForEnrollment = null;
-        window.isAdminLoggedIn = false;
-        window.currentUserRecord = null;
-        window.currentCourseModules = [];
-        window.currentEditingQuestions = [];
-        window.activeResourceInputMode = 'file';
-        window.editingQuestionIndex = -1;
+        window.currentTab = window.currentTab || 'DOC';
 
-        // DRAG & DROP CERTIFICATE VARIABLES
-        var isDragging = false;
-        var currentDragElement = null;
-        var dragOffsetX = 0;
-        var dragOffsetY = 0;
-
-        // FORMAT EMBED YOUTUBE URL HELPER
+        // FORMAT EMBED YOUTUBE & DRIVE URL HELPER
         window.formatEmbedUrl = function(url) {
             if (!url) return '';
-            if (url.includes('youtube.com/watch?v=')) {
-                const videoId = url.split('v=')[1].split('&')[0];
-                return `https://www.youtube.com/embed/${videoId}`;
-            } else if (url.includes('youtu.be/')) {
-                const videoId = url.split('youtu.be/')[1].split('?')[0];
-                return `https://www.youtube.com/embed/${videoId}`;
+            let formatted = url.trim();
+            if (formatted.includes('youtube.com/watch?v=')) {
+                const videoId = formatted.split('v=')[1].split('&')[0];
+                return `https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0`;
+            } else if (formatted.includes('youtu.be/')) {
+                const videoId = formatted.split('youtu.be/')[1].split('?')[0];
+                return `https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0`;
+            } else if (formatted.includes('drive.google.com/file/d/')) {
+                const fileId = formatted.split('/d/')[1].split('/')[0];
+                return `https://drive.google.com/file/d/${fileId}/preview`;
+            } else if (formatted.includes('docs.google.com/presentation/d/')) {
+                const fileId = formatted.split('/d/')[1].split('/')[0];
+                return `https://docs.google.com/presentation/d/${fileId}/embed?start=false&loop=false&delayms=3000`;
             }
-            return url;
+            return formatted;
+        };
+
+        // LOAD MODULE CONTENT & RENDER VIDEO / MATERIALS
+        window.loadModuleInPlayer = function(moduleIndex) {
+            if (!window.currentCourse || !window.currentCourse.modules || !window.currentCourse.modules[moduleIndex]) return;
+
+            window.currentModuleIndex = moduleIndex;
+            const currentMod = window.currentCourse.modules[moduleIndex];
+
+            // Module Titles & Counters
+            const modNameEl = document.getElementById('currentModuleName');
+            const modCounterEl = document.getElementById('moduleCounter');
+            if (modNameEl) modNameEl.innerText = currentMod.title || `Módulo ${moduleIndex + 1}`;
+            if (modCounterEl) modCounterEl.innerText = `${moduleIndex + 1}/${window.currentCourse.modules.length}`;
+
+            // Handle Video Player & YouTube/Drive Embeds
+            const iframe = document.getElementById('youtubeIframe');
+            const simPlayer = document.getElementById('simulatedPlayer');
+            const simTitle = document.getElementById('simulatedTitle');
+
+            if (currentMod.videoUrl && currentMod.videoUrl.trim() !== '') {
+                const embedSrc = window.formatEmbedUrl(currentMod.videoUrl);
+                if (iframe) {
+                    iframe.src = embedSrc;
+                    iframe.classList.remove('hidden');
+                }
+                if (simPlayer) simPlayer.classList.add('hidden');
+            } else {
+                if (iframe) {
+                    iframe.src = '';
+                    iframe.classList.add('hidden');
+                }
+                if (simPlayer) simPlayer.classList.remove('hidden');
+                if (simTitle) simTitle.innerText = currentMod.title || 'Módulo de Capacitación';
+            }
+
+            // Render PDF / Material Resources
+            const materialsContent = document.getElementById('materialsContent');
+            const previewContainer = document.getElementById('materialPreviewIframeContainer');
+            const inlineIframe = document.getElementById('materialInlineIframe');
+
+            if (previewContainer) previewContainer.classList.add('hidden');
+            if (inlineIframe) inlineIframe.src = '';
+
+            if (materialsContent) {
+                const resUrl = currentMod.materialUrl || currentMod.resourceUrl || currentMod.materialFile || '';
+                if (resUrl && resUrl.trim() !== '') {
+                    const lowerUrl = resUrl.toLowerCase();
+                    const isPdf = lowerUrl.includes('.pdf');
+                    const isSlide = lowerUrl.includes('.ppt') || lowerUrl.includes('.pptx') || lowerUrl.includes('presentation');
+                    const isDoc = lowerUrl.includes('.doc') || lowerUrl.includes('.docx') || lowerUrl.includes('document');
+
+                    materialsContent.innerHTML = `
+                        <div class="flex items-center gap-2">
+                            <span class="w-8 h-8 rounded-lg bg-amber-100 text-amber-900 font-bold flex items-center justify-center text-sm shadow-sm">
+                                <i class="fa-solid ${isPdf ? 'fa-file-pdf text-red-600' : isSlide ? 'fa-file-powerpoint text-amber-600' : isDoc ? 'fa-file-word text-blue-600' : 'fa-link text-ceut-navy'}"></i>
+                            </span>
+                            <div>
+                                <h5 class="font-bold text-ceut-navy text-xs">${isPdf ? 'Documento PDF Oficial' : isSlide ? 'Presentación de Diapositivas' : isDoc ? 'Documento de Lectura' : 'Recurso Complementario'}</h5>
+                                <p class="text-[10px] text-slate-500 truncate max-w-xs">${resUrl}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button type="button" onclick="window.previewMaterialInline('${resUrl.replace(/'/g, "\\'")}')" class="px-3 py-1.5 bg-ceut-navy hover:bg-ceut-purple text-white font-bold text-[11px] rounded-lg shadow transition-colors flex items-center gap-1">
+                                <i class="fa-solid fa-eye text-ceut-gold"></i> Previsualizar Lectura
+                            </button>
+                            <a href="${resUrl}" target="_blank" rel="noopener noreferrer" class="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-[11px] rounded-lg transition-colors flex items-center gap-1">
+                                <i class="fa-solid fa-arrow-up-right-from-square"></i> Abrir en Pestaña
+                            </a>
+                        </div>
+                    `;
+                } else {
+                    materialsContent.innerHTML = `
+                        <div class="flex items-center gap-2 text-slate-400 italic">
+                            <i class="fa-solid fa-circle-info"></i>
+                            <span>Este módulo no requiere material complementario o PDF adjunto.</span>
+                        </div>
+                    `;
+                }
+            }
+
+            // Render Modules Sidebar Index
+            const sidebarList = document.getElementById('modulesSidebarList');
+            if (sidebarList) {
+                sidebarList.innerHTML = window.currentCourse.modules.map((m, idx) => `
+                    <button onclick="window.loadModuleInPlayer(${idx})" class="w-full text-left p-3 rounded-xl border transition-all flex items-center justify-between ${idx === moduleIndex ? 'bg-amber-50 border-ceut-gold text-ceut-navy font-bold shadow-sm' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'}">
+                        <div class="flex items-center gap-2 max-w-[80%]">
+                            <span class="w-6 h-6 rounded-full ${idx === moduleIndex ? 'bg-ceut-navy text-ceut-gold' : 'bg-slate-200 text-slate-600'} text-xs flex items-center justify-center font-bold shrink-0">${idx + 1}</span>
+                            <span class="text-xs truncate">${m.title || `Módulo ${idx + 1}`}</span>
+                        </div>
+                        <i class="fa-solid ${idx === moduleIndex ? 'fa-circle-play text-ceut-gold' : 'fa-chevron-right text-slate-400'} text-xs"></i>
+                    </button>
+                `).join('');
+            }
+
+            // Render Module Questions for Quiz
+            if (typeof window.renderModuleQuestions === 'function') {
+                window.renderModuleQuestions(currentMod.questions || []);
+            }
+        };
+
+        window.previewMaterialInline = function(url) {
+            const previewContainer = document.getElementById('materialPreviewIframeContainer');
+            const inlineIframe = document.getElementById('materialInlineIframe');
+            if (!previewContainer || !inlineIframe) return;
+
+            let formattedUrl = url;
+            const lowerUrl = url.toLowerCase();
+
+            if (lowerUrl.includes('drive.google.com') || lowerUrl.includes('docs.google.com')) {
+                formattedUrl = window.formatEmbedUrl(url);
+            } else if (lowerUrl.endsWith('.pdf')) {
+                formattedUrl = url;
+            } else {
+                formattedUrl = `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`;
+            }
+
+            inlineIframe.src = formattedUrl;
+            previewContainer.classList.remove('hidden');
+        };
+
+        window.toggleInlineMaterialPreview = function() {
+            const previewContainer = document.getElementById('materialPreviewIframeContainer');
+            const inlineIframe = document.getElementById('materialInlineIframe');
+            if (previewContainer) previewContainer.classList.add('hidden');
+            if (inlineIframe) inlineIframe.src = '';
         };
 
         // NAVIGATION TABS SWITCHER
@@ -1197,7 +1293,8 @@
             const grid = document.getElementById('courseGrid');
             if (!grid) return;
 
-            const filteredCourses = window.coursesData.filter(c => c.roleCategory === window.currentTab);
+            const safeCourses = Array.isArray(window.coursesData) ? window.coursesData : [];
+            const filteredCourses = safeCourses.filter(c => c && c.roleCategory === window.currentTab);
 
             if (filteredCourses.length === 0) {
                 grid.innerHTML = `

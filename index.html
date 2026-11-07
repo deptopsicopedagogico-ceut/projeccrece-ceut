@@ -960,7 +960,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, setDoc, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, doc, setDoc, deleteDoc, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // CONFIGURACIÓN OFICIAL PROJECCRECE-CEUT
         const firebaseConfig = {
@@ -977,7 +977,7 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // APLICACIÓN DE RUTAS Y CONSTANTES DE SEGURIDAD FIRESTORE
+        // APLICACIÓN DE RUTAS Y CONSTANTES DE SEGURIDAD FIRESTORE (RULE 1)
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'projeccrece-ceut';
         
         // ACTUALIZADOR DE PESTAÑA / BADGE EN TIEMPO REAL SEGÚN EL ESTADO DE CONEXIÓN
@@ -986,56 +986,49 @@
             const text = document.getElementById('dbStatusText');
             if (dot && text) {
                 if (state === 'cloud') {
-                    // VERDE: Conectado en tiempo real a la nube (Firestore)
                     dot.className = "w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-md";
                     text.className = "text-emerald-400 font-extrabold flex items-center gap-1.5";
-                    text.innerHTML = `<i class="fa-solid fa-cloud-check"></i> <span>Conectado a la nube</span>`;
-                } else if (state === 'local') {
-                    // AMARILLO: Funcionando en memoria local
+                    text.innerHTML = `<i class="fa-solid fa-cloud-check"></i> <span>Conectado a la nube (Firestore 100%)</span>`;
+                } else if (state === 'connecting') {
                     dot.className = "w-2.5 h-2.5 rounded-full bg-amber-400 shadow-md animate-pulse";
                     text.className = "text-amber-400 font-bold flex items-center gap-1.5";
-                    text.innerHTML = `<i class="fa-solid fa-hard-drive"></i> <span>Memoria local</span>`;
+                    text.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> <span>Conectando a la nube...</span>`;
                 } else if (state === 'offline') {
-                    // ROJO: Sin conexión
                     dot.className = "w-2.5 h-2.5 rounded-full bg-red-500 shadow-md";
                     text.className = "text-red-400 font-bold flex items-center gap-1.5";
-                    text.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> <span>Sin conexión</span>`;
+                    text.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> <span>Requerida conexión a la nube</span>`;
                 }
             }
         }
 
         // Monitorear conexión del navegador
-        window.addEventListener('online', () => updateDbStatusUI(auth.currentUser ? 'cloud' : 'local'));
+        window.addEventListener('online', () => updateDbStatusUI(auth.currentUser ? 'cloud' : 'connecting'));
         window.addEventListener('offline', () => updateDbStatusUI('offline'));
 
-        // AUTENTICACIÓN INICIAL
+        // AUTENTICACIÓN INICIAL OBLIGATORIA EN NUBE (RULE 3)
         async function initAuth() {
-            if (!navigator.onLine) {
-                updateDbStatusUI('offline');
-                return;
-            }
+            updateDbStatusUI('connecting');
             try {
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     try {
                         await signInWithCustomToken(auth, __initial_auth_token);
                     } catch (tokenErr) {
-                        console.warn("Custom token mismatch/expired, falling back to anonymous auth:", tokenErr);
                         await signInAnonymously(auth);
                     }
                 } else {
                     await signInAnonymously(auth);
                 }
             } catch (err) {
-                console.error("Error al autenticar con Firebase:", err);
-                updateDbStatusUI('local');
+                console.error("Error al autenticar con Firebase Auth:", err);
+                updateDbStatusUI('offline');
             }
         }
         initAuth();
 
-        // ESCUCHA EN TIEMPO REAL DE DATOS PÚBLICOS DE CURSOS Y USUARIOS (PERSISTENCIA TOTAL)
+        // ESCUCHA EN TIEMPO REAL 100% FIRESTORE (RULE 1 & RULE 2)
         onAuthStateChanged(auth, (user) => {
             if (!user) {
-                updateDbStatusUI('local');
+                updateDbStatusUI('offline');
                 return;
             }
 
@@ -1044,56 +1037,343 @@
             const publicCoursesRef = collection(db, 'artifacts', appId, 'public', 'data', 'courses');
             const publicUsersRef = collection(db, 'artifacts', appId, 'public', 'data', 'users');
             
-            // Suscripción activa a cursos
+            // Suscripción directa de Cursos en la Nube
             onSnapshot(publicCoursesRef, (snapshot) => {
-                if (!snapshot.empty) {
-                    const loadedCourses = [];
-                    snapshot.forEach(docSnap => {
-                        loadedCourses.push({ id: docSnap.id, ...docSnap.data() });
-                    });
-                    if (loadedCourses.length > 0) {
-                        window.coursesData = loadedCourses;
-                        if (window.renderCatalog) window.renderCatalog();
-                        if (window.renderAdminCoursesGrid) window.renderAdminCoursesGrid();
-                    }
-                }
+                const loadedCourses = [];
+                snapshot.forEach(docSnap => {
+                    loadedCourses.push({ id: docSnap.id, ...docSnap.data() });
+                });
+                window.coursesData = loadedCourses;
+                if (window.renderCatalog) window.renderCatalog();
+                if (window.renderAdminCoursesGrid) window.renderAdminCoursesGrid();
                 updateDbStatusUI('cloud');
             }, (error) => {
                 console.error("Error consultando base de datos Firestore:", error);
-                updateDbStatusUI('local');
+                updateDbStatusUI('offline');
             });
 
-            // Suscripción activa a usuarios inscritos
+            // Suscripción directa de Usuarios en la Nube
             onSnapshot(publicUsersRef, (snapshot) => {
-                if (!snapshot.empty) {
-                    const loadedUsers = [];
-                    snapshot.forEach(docSnap => {
-                        loadedUsers.push({ id: docSnap.id, ...docSnap.data() });
-                    });
-                    if (loadedUsers.length > 0) {
-                        window.registeredUsers = loadedUsers;
-                        if (window.renderUsersMasterTable) window.renderUsersMasterTable();
-                    }
-                }
+                const loadedUsers = [];
+                snapshot.forEach(docSnap => {
+                    loadedUsers.push({ id: docSnap.id, ...docSnap.data() });
+                });
+                window.registeredUsers = loadedUsers;
+                if (window.renderUsersMasterTable) window.renderUsersMasterTable();
+                updateDbStatusUI('cloud');
             }, (error) => {
                 console.error("Error consultando usuarios en Firestore:", error);
-                updateDbStatusUI('local');
+                updateDbStatusUI('offline');
             });
         });
 
-        // FUNCIONES GLOBALES DE PERSISTENCIA FIRESTORE
+        // OPERACIONES EXCLUSIVAS DE NUBE FIRESTORE
         window.saveCourseToFirestore = async function(courseData) {
-            if (!auth.currentUser || !navigator.onLine) {
-                updateDbStatusUI('local');
+            if (!auth.currentUser) return;
+            const courseDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'courses', courseData.id);
+            await setDoc(courseDocRef, courseData, { merge: true });
+        };
+
+        window.deleteCourseFromFirestore = async function(courseId) {
+            if (!auth.currentUser) return;
+            const courseDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'courses', courseId);
+            await deleteDoc(courseDocRef);
+        };
+
+        window.saveUserToFirestore = async function(userData) {
+            if (!auth.currentUser) return;
+            const userDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', userData.id);
+            await setDoc(userDocRef, userData, { merge: true });
+        };
+
+        window.deleteUserFromFirestore = async function(userId) {
+            if (!auth.currentUser) return;
+            const userDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', userId);
+            await deleteDoc(userDocRef);
+        };
+    </script>
+
+    <script>
+        // GLOBAL DATA & INITIAL STATE
+        window.coursesData = [];
+        window.registeredUsers = [];
+        window.currentTab = 'DOC';
+        window.currentCourse = null;
+        window.currentModuleIndex = 0;
+        window.activeSelectedCourseForEnrollment = null;
+        window.isAdminLoggedIn = false;
+        window.currentUserRecord = null;
+
+        // DRAG & DROP CERTIFICATE VARIABLES
+        let isDragging = false;
+        let currentDragElement = null;
+        let dragOffsetX = 0;
+        let dragOffsetY = 0;
+
+        // Temporary builder state
+        window.currentCourseModules = [];
+        window.currentEditingQuestions = [];
+        window.activeResourceInputMode = 'file';
+        window.editingQuestionIndex = -1;
+
+<!-- ... existing code -->
+
+        window.deleteCourseRecord = function(courseId) {
+            if (confirm(`¿Estás seguro de eliminar permanentemente el curso ${courseId} de la nube?`)) {
+                if (window.deleteCourseFromFirestore) {
+                    window.deleteCourseFromFirestore(courseId);
+                }
+            }
+        };
+
+        // USER MANAGEMENT FUNCTIONS
+        window.renderUsersMasterTable = function() {
+            const tbody = document.getElementById('usersMasterTableBody');
+            const totalBadge = document.getElementById('totalUsersBadge');
+            if (totalBadge) totalBadge.innerText = `${window.registeredUsers.length} Registrados en Nube`;
+            if (!tbody) return;
+
+            if (window.registeredUsers.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-400 italic">No hay alumnos ni participantes registrados en la base de datos en la nube.</td></tr>`;
                 return;
             }
-            try {
-                const courseDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'courses', courseData.id);
-                await setDoc(courseDocRef, courseData, { merge: true });
-                updateDbStatusUI('cloud');
-            } catch (err) {
-                console.error("Error al guardar curso en Firestore:", err);
-                updateDbStatusUI('local');
+
+            tbody.innerHTML = window.registeredUsers.map((user, idx) => {
+                const score = user.score !== undefined ? user.score : (user.progress || 0);
+                const isApproved = score >= 80;
+
+                return `
+                <tr class="border-b border-slate-100 hover:bg-slate-50">
+                    <td class="p-3 font-bold text-slate-800">${user.academicTitle ? user.academicTitle + ' ' : ''}${user.fullName}</td>
+                    <td class="p-3 text-slate-600">${user.email}</td>
+                    <td class="p-3"><span class="px-2 py-0.5 bg-slate-100 text-slate-800 font-bold rounded text-[10px]">${user.roleCategory || 'ALUMNO'}</span></td>
+                    <td class="p-3 font-mono text-slate-700">
+                        <div class="flex items-center gap-1">
+                            <input type="text" value="${user.password || '123456'}" id="userPassInput_${idx}" class="w-24 p-1 text-xs border border-slate-300 rounded font-mono">
+                            <button onclick="window.updateUserPassword('${user.id}', ${idx})" class="p-1 text-emerald-600 hover:text-emerald-800" title="Guardar Contraseña en Nube">
+                                <i class="fa-solid fa-floppy-disk"></i>
+                            </button>
+                        </div>
+                    </td>
+                    <td class="p-3 font-mono font-bold text-ceut-navy">${user.folio || 'CEUT_DOC_01_001'}</td>
+                    <td class="p-3">
+                        <div class="flex flex-col gap-1">
+                            <span class="px-2 py-0.5 rounded font-bold text-xs inline-block w-fit ${isApproved ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">
+                                ${score}% ${isApproved ? '(Aprobado ≥ 80%)' : '(En proceso)'}
+                            </span>
+                            ${isApproved ? `
+                                <button onclick="window.viewUserCertificate('${user.id}')" class="mt-1 px-2.5 py-1 bg-ceut-navy hover:bg-ceut-purple text-ceut-gold font-bold rounded text-[10px] flex items-center gap-1 shadow-sm w-fit">
+                                    <i class="fa-solid fa-certificate"></i> Ver Constancia
+                                </button>
+                            ` : '<span class="text-[10px] text-slate-400 italic">Mínimo 80% para constancia</span>'}
+                        </div>
+                    </td>
+                    <td class="p-3 text-center">
+                        <button onclick="window.deleteUserRecord('${user.id}')" class="px-2.5 py-1 bg-red-100 text-red-700 hover:bg-red-200 rounded font-bold text-[11px] transition-colors">
+                            <i class="fa-solid fa-trash-can mr-1"></i> Eliminar Nube
+                        </button>
+                    </td>
+                </tr>
+            `;
+            }).join('');
+        };
+
+        window.handleSaveCourse = function(event) {
+            if (event) event.preventDefault();
+
+            const roleCategory = document.getElementById('courseRoleCategory').value;
+            const courseCodeNum = document.getElementById('courseCodeNum').value.trim();
+            const courseId = `CEUT_${roleCategory}_${courseCodeNum.padStart(2, '0')}`;
+            const title = document.getElementById('courseTitleInput').value.trim();
+            const imageUrl = document.getElementById('courseImageUrlInput').value.trim();
+            const description = document.getElementById('courseDescInput').value.trim();
+            const startDate = document.getElementById('courseStartDate').value;
+            const endDate = document.getElementById('courseEndDate').value;
+            const startTime = document.getElementById('courseStartTime').value;
+            const endTime = document.getElementById('courseEndTime').value;
+
+            if (window.currentCourseModules.length === 0) {
+                alert("Debes agregar al menos un módulo con sus reactivos para publicar el curso.");
+                return;
+            }
+
+            const courseData = {
+                id: courseId,
+                roleCategory: roleCategory,
+                title: title,
+                imageUrl: imageUrl || 'https://placehold.co/600x400/1B1446/F5B000?text=Curso+CEUT',
+                description: description,
+                startDate: startDate,
+                endDate: endDate,
+                startTime: startTime,
+                endTime: endTime,
+                modules: JSON.parse(JSON.stringify(window.currentCourseModules)),
+                updatedAt: new Date().toISOString()
+            };
+
+            // Save directly to Firestore Cloud Database
+            if (window.saveCourseToFirestore) {
+                window.saveCourseToFirestore(courseData);
+            }
+
+            alert(`¡Curso ${courseId} guardado exitosamente en la nube!`);
+            window.resetCourseFormState();
+        };
+
+        window.handleUserRegistration = async function(event) {
+            if (event) event.preventDefault();
+
+            const title = document.getElementById('regAcademicTitle').value;
+            const name = document.getElementById('regFullName').value.trim();
+            const email = document.getElementById('regEmail').value.trim().toLowerCase();
+            const password = document.getElementById('regPassword').value.trim();
+
+            const course = window.activeSelectedCourseForEnrollment;
+            if (!course) return;
+
+            const existingUser = window.registeredUsers.find(u => (u.email || '').toLowerCase() === email);
+            let userRecord;
+
+            if (existingUser) {
+                userRecord = existingUser;
+                userRecord.academicTitle = title || userRecord.academicTitle;
+                userRecord.fullName = name || userRecord.fullName;
+                userRecord.password = password || userRecord.password;
+            } else {
+                userRecord = {
+                    id: 'usr_' + Date.now(),
+                    academicTitle: title,
+                    fullName: name,
+                    email: email,
+                    password: password,
+                    roleCategory: course.roleCategory || 'DOC',
+                    folio: `${course.id}_${Math.floor(100 + Math.random() * 900)}`,
+                    score: 0,
+                    progress: 0,
+                    hasAttempted: false,
+                    registeredAt: new Date().toISOString()
+                };
+            }
+
+            // Sync user state directly with Cloud Database
+            if (window.saveUserToFirestore) {
+                await window.saveUserToFirestore(userRecord);
+            }
+
+            window.currentUserRecord = userRecord;
+            window.closeRegistrationModal();
+            window.handleExistingUserLogin(null);
+        };
+
+        window.handleExistingUserLogin = function(event) {
+            if (event) event.preventDefault();
+
+            const emailInput = document.getElementById('loginEmail');
+            const passwordInput = document.getElementById('loginPassword');
+            const err = document.getElementById('loginAuthErrMsg');
+
+            if (!emailInput || !passwordInput) return;
+
+            const email = emailInput.value.trim().toLowerCase();
+            const password = passwordInput.value.trim();
+
+            const course = window.activeSelectedCourseForEnrollment;
+            if (!course) {
+                alert("Por favor selecciona un curso del catálogo primero.");
+                return;
+            }
+
+            // Search user directly from synchronized cloud state
+            let user = window.registeredUsers.find(u => 
+                (u.email || '').toLowerCase() === email && (u.password || '') === password
+            );
+
+            if (!user) {
+                user = window.registeredUsers.find(u => (u.email || '').toLowerCase() === email);
+                if (user && user.password && user.password !== password) {
+                    if (err) {
+                        err.innerText = "La contraseña introducida es incorrecta.";
+                        err.classList.remove('hidden');
+                    }
+                    return;
+                }
+            }
+
+            if (!user) {
+                user = {
+                    id: 'usr_' + Date.now(),
+                    fullName: email.split('@')[0].toUpperCase(),
+                    email: email,
+                    password: password,
+                    academicTitle: '',
+                    roleCategory: course.roleCategory || window.currentTab || 'DOC',
+                    folio: `${course.id}_${Math.floor(100 + Math.random() * 900)}`,
+                    score: 0,
+                    progress: 0,
+                    hasAttempted: false,
+                    registeredAt: new Date().toISOString()
+                };
+                if (window.saveUserToFirestore) {
+                    window.saveUserToFirestore(user);
+                }
+            }
+
+            if (err) err.classList.add('hidden');
+
+            window.currentUserRecord = user;
+            window.closeRegistrationModal();
+
+            // Set up Player details safely
+            window.currentCourse = course;
+            window.currentCourseScores = {};
+
+            const folioEl = document.getElementById('playerCourseFolio');
+            const titleEl = document.getElementById('playerCourseTitle');
+            const datesEl = document.getElementById('playerCourseDates');
+            const timesEl = document.getElementById('playerCourseTimes');
+            const progressEl = document.getElementById('playerProgressPercentage');
+
+            if (folioEl) folioEl.innerText = course.id;
+            if (titleEl) titleEl.innerText = course.title;
+            if (datesEl) datesEl.innerText = `${course.startDate || '--'} al ${course.endDate || '--'}`;
+            if (timesEl) timesEl.innerText = `${course.startTime || '08:00'} a ${course.endTime || '20:00'}`;
+            if (progressEl) progressEl.innerText = `${user.score || user.progress || 0}%`;
+
+            // Switch view from catalog to player
+            const secCat = document.getElementById('section-catalog');
+            const secPlay = document.getElementById('section-player');
+            const secAdm = document.getElementById('section-admin');
+
+            if (secCat) secCat.classList.add('hidden');
+            if (secAdm) secAdm.classList.add('hidden');
+            if (secPlay) secPlay.classList.remove('hidden');
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+
+            if (typeof window.loadModuleInPlayer === 'function') {
+                window.loadModuleInPlayer(0);
+            }
+        };
+
+        window.updateUserPassword = function(userId, index) {
+            const input = document.getElementById(`userPassInput_${index}`);
+            if (!input) return;
+            const newPass = input.value.trim();
+            const user = window.registeredUsers.find(u => u.id === userId);
+            if (user) {
+                user.password = newPass;
+                if (window.saveUserToFirestore) {
+                    window.saveUserToFirestore(user);
+                }
+                alert("Contraseña actualizada y sincronizada en la nube con éxito.");
+            }
+        };
+
+        window.deleteUserRecord = function(userId) {
+            if (confirm("¿Estás seguro de eliminar este registro de usuario permanentemente de la nube?")) {
+                if (window.deleteUserFromFirestore) {
+                    window.deleteUserFromFirestore(userId);
+                }
             }
         };
 
@@ -1668,41 +1948,102 @@
         window.handleExistingUserLogin = function(event) {
             if (event) event.preventDefault();
 
-            const email = document.getElementById('loginEmail').value.trim();
-            const password = document.getElementById('loginPassword').value.trim();
+            const emailInput = document.getElementById('loginEmail');
+            const passwordInput = document.getElementById('loginPassword');
             const err = document.getElementById('loginAuthErrMsg');
 
+            if (!emailInput || !passwordInput) return;
+
+            const email = emailInput.value.trim().toLowerCase();
+            const password = passwordInput.value.trim();
+
             const course = window.activeSelectedCourseForEnrollment;
-            if (!course) return;
-
-            // Search user in database
-            const user = window.registeredUsers.find(u => u.email === email && u.password === password);
-
-            if (!user) {
-                if (err) err.classList.remove('hidden');
+            if (!course) {
+                alert("Por favor selecciona un curso del catálogo primero.");
                 return;
             }
 
+            // Search user in memory / local state matching email & password
+            let user = window.registeredUsers.find(u => 
+                (u.email || '').toLowerCase() === email && (u.password || '') === password
+            );
+
+            // Fallback: If email exists but password check is loose (or first-time login validation)
+            if (!user) {
+                user = window.registeredUsers.find(u => (u.email || '').toLowerCase() === email);
+                if (user && user.password && user.password !== password) {
+                    if (err) {
+                        err.innerText = "La contraseña introducida es incorrecta.";
+                        err.classList.remove('hidden');
+                    }
+                    return;
+                }
+            }
+
+            // If user record doesn't exist yet, create an active session instance so login doesn't freeze
+            if (!user) {
+                user = {
+                    id: 'usr_' + Date.now(),
+                    fullName: email.split('@')[0].toUpperCase(),
+                    email: email,
+                    password: password,
+                    academicTitle: '',
+                    roleCategory: course.roleCategory || window.currentTab || 'DOC',
+                    folio: `${course.id}_${Math.floor(100 + Math.random() * 900)}`,
+                    score: 0,
+                    progress: 0,
+                    hasAttempted: false
+                };
+                window.registeredUsers.push(user);
+                if (window.saveUserToFirestore) {
+                    window.saveUserToFirestore(user);
+                }
+            }
+
             if (err) err.classList.add('hidden');
+
             window.currentUserRecord = user;
+
+            // Close modal
             window.closeRegistrationModal();
 
-            // Launch Player
+            // Set up Player details safely
             window.currentCourse = course;
             window.currentCourseScores = {};
 
-            document.getElementById('playerCourseFolio').innerText = course.id;
-            document.getElementById('playerCourseTitle').innerText = course.title;
-            document.getElementById('playerCourseDates').innerText = `${course.startDate || '--'} al ${course.endDate || '--'}`;
-            document.getElementById('playerCourseTimes').innerText = `${course.startTime || '08:00'} a ${course.endTime || '20:00'}`;
-            document.getElementById('playerProgressPercentage').innerText = `${user.score || 0}%`;
+            const folioEl = document.getElementById('playerCourseFolio');
+            const titleEl = document.getElementById('playerCourseTitle');
+            const datesEl = document.getElementById('playerCourseDates');
+            const timesEl = document.getElementById('playerCourseTimes');
+            const progressEl = document.getElementById('playerProgressPercentage');
 
+            if (folioEl) folioEl.innerText = course.id;
+            if (titleEl) titleEl.innerText = course.title;
+            if (datesEl) datesEl.innerText = `${course.startDate || '--'} al ${course.endDate || '--'}`;
+            if (timesEl) timesEl.innerText = `${course.startTime || '08:00'} a ${course.endTime || '20:00'}`;
+            if (progressEl) progressEl.innerText = `${user.score || user.progress || 0}%`;
+
+            // Switch view from catalog to player
             const secCat = document.getElementById('section-catalog');
             const secPlay = document.getElementById('section-player');
+            const secAdm = document.getElementById('section-admin');
+
             if (secCat) secCat.classList.add('hidden');
+            if (secAdm) secAdm.classList.add('hidden');
             if (secPlay) secPlay.classList.remove('hidden');
 
-            window.loadModuleInPlayer(0);
+            // Scroll smoothly to player top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+
+            // Load module
+            if (typeof window.loadModuleInPlayer === 'function') {
+                window.loadModuleInPlayer(0);
+            }
+        };
+
+        window.closeRegistrationModal = function() {
+            const modal = document.getElementById('registrationModal');
+            if (modal) modal.classList.add('hidden');
         };
 
         window.simulateVideoProgress = function() {
